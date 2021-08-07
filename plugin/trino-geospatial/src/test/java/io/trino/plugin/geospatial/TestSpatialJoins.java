@@ -14,7 +14,7 @@
 package io.trino.plugin.geospatial;
 
 import io.trino.Session;
-import io.trino.plugin.hive.TestingHivePlugin;
+import io.trino.plugin.hive.TestingHiveMetastorePlugin;
 import io.trino.plugin.hive.authentication.HiveIdentity;
 import io.trino.plugin.hive.metastore.Database;
 import io.trino.plugin.hive.metastore.HiveMetastore;
@@ -84,7 +84,7 @@ public class TestSpatialJoins
                         .setOwnerName("public")
                         .setOwnerType(PrincipalType.ROLE)
                         .build());
-        queryRunner.installPlugin(new TestingHivePlugin(metastore));
+        queryRunner.installPlugin(new TestingHiveMetastorePlugin(metastore));
 
         queryRunner.createCatalog("hive", "hive");
         return queryRunner;

@@ -14,15 +14,34 @@
 package io.trino.plugin.hive;
 
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Module;
+import io.trino.plugin.hive.metastore.HiveMetastore;
 import io.trino.spi.Plugin;
 import io.trino.spi.connector.ConnectorFactory;
 
-public class TestingHivePlugin
+import static com.google.inject.util.Modules.EMPTY_MODULE;
+import static java.util.Objects.requireNonNull;
+
+public class TestingHiveMetastorePlugin
         implements Plugin
 {
+    private final HiveMetastore metastore;
+    private final Module module;
+
+    public TestingHiveMetastorePlugin(HiveMetastore metastore)
+    {
+        this(metastore, EMPTY_MODULE);
+    }
+
+    public TestingHiveMetastorePlugin(HiveMetastore metastore, Module module)
+    {
+        this.metastore = requireNonNull(metastore, "metastore is null");
+        this.module = requireNonNull(module, "module is null");
+    }
+
     @Override
     public Iterable<ConnectorFactory> getConnectorFactories()
     {
-        return ImmutableList.of(new HiveConnectorFactory("hive"));
+        return ImmutableList.of(new TestingHiveConnectorFactory(metastore, module));
     }
 }

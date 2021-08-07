@@ -16,7 +16,6 @@ package io.trino.plugin.hive;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Files;
 import io.airlift.json.JsonCodec;
 import io.airlift.json.JsonCodecFactory;
 import io.airlift.json.ObjectMapperProvider;
@@ -88,7 +87,6 @@ import java.util.stream.LongStream;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.io.Files.asCharSink;
 import static com.google.common.io.Files.createTempDir;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
@@ -99,6 +97,7 @@ import static io.trino.SystemSessionProperties.ENABLE_DYNAMIC_FILTERING;
 import static io.trino.SystemSessionProperties.GROUPED_EXECUTION;
 import static io.trino.SystemSessionProperties.JOIN_DISTRIBUTION_TYPE;
 import static io.trino.SystemSessionProperties.USE_TABLE_SCAN_NODE_PARTITIONING;
+import static io.trino.plugin.hive.HadoopQueryRunner.createHadoopQueryRunner;
 import static io.trino.plugin.hive.HiveColumnHandle.BUCKET_COLUMN_NAME;
 import static io.trino.plugin.hive.HiveColumnHandle.FILE_MODIFIED_TIME_COLUMN_NAME;
 import static io.trino.plugin.hive.HiveColumnHandle.FILE_SIZE_COLUMN_NAME;
@@ -161,12 +160,12 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
-import static org.testng.FileAssert.assertFile;
 
 public class TestHiveConnectorTest
         extends BaseConnectorTest
 {
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
+    private TestingHadoopServer server;
     private final String catalog;
     private final Session bucketedSession;
 
@@ -180,19 +179,23 @@ public class TestHiveConnectorTest
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        DistributedQueryRunner queryRunner = HiveQueryRunner.builder()
-                .setHiveProperties(ImmutableMap.of(
+        server = new TestingHadoopServer();
+        DistributedQueryRunner queryRunner = createHadoopQueryRunner(
+                server,
+                ImmutableMap.of(),
+                ImmutableMap.of(
                         "hive.allow-register-partition-procedure", "true",
                         // Reduce writer sort buffer size to ensure SortingFileWriter gets used
-                        "hive.writer-sort-buffer-size", "1MB"))
-                .setInitialTables(REQUIRED_TPCH_TABLES)
-                .build();
+                        "hive.writer-sort-buffer-size", "1MB"),
+                REQUIRED_TPCH_TABLES);
 
         // extra catalog with NANOSECOND timestamp precision
         queryRunner.createCatalog(
                 "hive_timestamp_nanos",
                 "hive",
-                ImmutableMap.of("hive.timestamp-precision", "NANOSECONDS"));
+                ImmutableMap.of(
+                        "hive.metastore.uri", server.getThriftUri(),
+                        "hive.timestamp-precision", "NANOSECONDS"));
         return queryRunner;
     }
 
@@ -417,6 +420,14 @@ public class TestHiveConnectorTest
         assertUpdate(session, "DROP SCHEMA new_schema");
     }
 
+    @Override
+    public void testRenameSchema()
+    {
+        assertThatThrownBy(super::testRenameSchema)
+                .hasMessageMatching("Hive metastore does not support renaming schemas");
+
+    }
+
     @Test
     public void testSchemaAuthorizationForUser()
     {
@@ -620,14 +631,12 @@ public class TestHiveConnectorTest
                 .build();
 
         assertUpdate(admin, "CREATE SCHEMA test_schema_authorization");
-        assertUpdate(admin, "CREATE ROLE admin");
 
         assertUpdate(admin, "ALTER SCHEMA test_schema_authorization SET AUTHORIZATION user");
         assertUpdate(user, "ALTER SCHEMA test_schema_authorization SET AUTHORIZATION ROLE admin");
         assertQueryFails(user, "ALTER SCHEMA test_schema_authorization SET AUTHORIZATION ROLE admin", "Access Denied: Cannot set authorization for schema test_schema_authorization to ROLE admin");
 
         assertUpdate(admin, "DROP SCHEMA test_schema_authorization");
-        assertUpdate(admin, "DROP ROLE admin");
     }
 
     @Test
@@ -672,7 +681,6 @@ public class TestHiveConnectorTest
 
         assertUpdate(admin, "CREATE SCHEMA test_table_authorization");
         assertUpdate(admin, "CREATE TABLE test_table_authorization.foo (col int)");
-        assertUpdate(admin, "CREATE ROLE admin");
 
         // TODO Change assertions once https://github.com/trinodb/trino/issues/5706 is done
         assertAccessDenied(
@@ -687,7 +695,6 @@ public class TestHiveConnectorTest
 
         assertUpdate(admin, "DROP TABLE test_table_authorization.foo");
         assertUpdate(admin, "DROP SCHEMA test_table_authorization");
-        assertUpdate(admin, "DROP ROLE admin");
     }
 
     @Test
@@ -799,7 +806,6 @@ public class TestHiveConnectorTest
         assertUpdate(admin, "CREATE SCHEMA " + schema);
         assertUpdate(admin, "CREATE TABLE " + schema + ".test_table (col int)");
         assertUpdate(admin, "CREATE VIEW " + schema + ".test_view AS SELECT * FROM " + schema + ".test_table");
-        assertUpdate(admin, "CREATE ROLE admin");
 
         // TODO Change assertions once https://github.com/trinodb/trino/issues/5706 is done
         assertAccessDenied(
@@ -812,7 +818,6 @@ public class TestHiveConnectorTest
                 "ALTER VIEW " + schema + ".test_view SET AUTHORIZATION ROLE admin",
                 "Setting table owner type as a role is not supported");
 
-        assertUpdate(admin, "DROP ROLE admin");
         assertUpdate(admin, "DROP VIEW " + schema + ".test_view");
         assertUpdate(admin, "DROP TABLE " + schema + ".test_table");
         assertUpdate(admin, "DROP SCHEMA " + schema);
@@ -843,7 +848,7 @@ public class TestHiveConnectorTest
                         "CREATE SCHEMA %s.test_show_create_schema\n" +
                         "AUTHORIZATION USER hive\n" +
                         "WITH \\(\n" +
-                        "   location = '.*test_show_create_schema'\n" +
+                        "   location = '.*test_show_create_schema.db'\n" +
                         "\\)",
                 getSession().getCatalog().get());
 
@@ -858,7 +863,7 @@ public class TestHiveConnectorTest
                         "CREATE SCHEMA %s.test_show_create_schema\n" +
                         "AUTHORIZATION ROLE test_show_create_schema_role\n" +
                         "WITH \\(\n" +
-                        "   location = '.*test_show_create_schema'\n" +
+                        "   location = '.*test_show_create_schema.db'\n" +
                         "\\)",
                 getSession().getCatalog().get());
 
@@ -1671,8 +1676,8 @@ public class TestHiveConnectorTest
         assertUpdate(createTable, "SELECT count(*) FROM orders");
         String queryId = (String) computeScalar("SELECT query_id FROM system.runtime.queries WHERE query LIKE 'CREATE TABLE test_show_properties%'");
         String nodeVersion = (String) computeScalar("SELECT node_version FROM system.runtime.nodes WHERE coordinator");
-        assertQuery("SELECT * FROM \"test_show_properties$properties\"",
-                "SELECT 'workaround for potential lack of HIVE-12730', 'ship_priority,order_status', '0.5', '" + queryId + "', '" + nodeVersion + "', 'false'");
+        assertQuery("SELECT stats_generated_via_stats_task, \"orc.bloom.filter.columns\", \"orc.bloom.filter.fpp\", presto_query_id, presto_version FROM \"test_show_properties$properties\"", // Skip transient_lastddltime column
+                "SELECT 'workaround for potential lack of HIVE-12730', 'ship_priority,order_status', '0.5', '" + queryId + "', '" + nodeVersion + "'");
         assertUpdate("DROP TABLE test_show_properties");
     }
 
@@ -3504,8 +3509,8 @@ public class TestHiveConnectorTest
                         "CREATE TABLE %s.%s.%s (\n" +
                         "   c1 bigint,\n" +
                         "   c2 double,\n" +
-                        "   \"c 3\" varchar,\n" +
-                        "   \"c'4\" array(bigint),\n" +
+                        "   c3 varchar,\n" +
+                        "   c4 array(bigint),\n" +
                         "   c5 map(bigint, varchar)\n" +
                         ")\n" +
                         "WITH (\n" +
@@ -3522,27 +3527,27 @@ public class TestHiveConnectorTest
         createTableSql = format("" +
                         "CREATE TABLE %s.%s.%s (\n" +
                         "   c1 bigint,\n" +
-                        "   \"c 2\" varchar,\n" +
-                        "   \"c'3\" array(bigint),\n" +
+                        "   c2 varchar,\n" +
+                        "   c3 array(bigint),\n" +
                         "   c4 map(bigint, varchar) COMMENT 'comment test4',\n" +
                         "   c5 double COMMENT ''\n)\n" +
                         "COMMENT 'test'\n" +
                         "WITH (\n" +
                         "   bucket_count = 5,\n" +
-                        "   bucketed_by = ARRAY['c1','c 2'],\n" +
+                        "   bucketed_by = ARRAY['c1','c2'],\n" +
                         "   bucketing_version = 1,\n" +
                         "   format = 'ORC',\n" +
                         "   orc_bloom_filter_columns = ARRAY['c1','c2'],\n" +
                         "   orc_bloom_filter_fpp = 7E-1,\n" +
                         "   partitioned_by = ARRAY['c5'],\n" +
-                        "   sorted_by = ARRAY['c1','c 2 DESC'],\n" +
+                        "   sorted_by = ARRAY[],\n" +
                         "   transactional = true\n" +
                         ")",
                 getSession().getCatalog().get(),
                 getSession().getSchema().get(),
-                "\"test_show_create_table'2\"");
+                "test_show_create_table2");
         assertUpdate(createTableSql);
-        actualResult = computeActual("SHOW CREATE TABLE \"test_show_create_table'2\"");
+        actualResult = computeActual("SHOW CREATE TABLE \"test_show_create_table2\"");
         assertEquals(getOnlyElement(actualResult.getOnlyColumnAsSet()), createTableSql);
 
         createTableSql = format("" +
@@ -3564,16 +3569,14 @@ public class TestHiveConnectorTest
             String fileContents,
             String expectedResults,
             List<String> tableProperties)
-            throws Exception
     {
-        File tempDir = createTempDir();
-        File dataFile = new File(tempDir, "test.txt");
-        Files.asCharSink(dataFile, UTF_8).write(fileContents);
+        String tempDir = server.createHdfsDirectory("/tmp/" + tableName);
+        server.copyFileToContainer(fileContents.getBytes(UTF_8), "/tmp/" + tableName + "/test.txt");
 
         // Table properties
         StringJoiner propertiesSql = new StringJoiner(",\n   ");
         propertiesSql.add(
-                format("external_location = '%s'", new Path(tempDir.toURI().toASCIIString())));
+                format("external_location = '%s'", tempDir));
         propertiesSql.add("format = 'TEXTFILE'");
         tableProperties.forEach(propertiesSql::add);
 
@@ -3596,8 +3599,8 @@ public class TestHiveConnectorTest
 
         assertQuery(format("SELECT col1, col2 from %s", tableName), expectedResults);
         assertUpdate(format("DROP TABLE %s", tableName));
-        assertFile(dataFile); // file should still exist after drop
-        deleteRecursively(tempDir.toPath(), ALLOW_INSECURE);
+        assertTrue(server.checkFileOnHdfs("/tmp/" + tableName + "/test.txt")); // file should still exist after drop
+        server.deleteHdfsDirectory(tempDir);
     }
 
     @Test
@@ -5628,8 +5631,8 @@ public class TestHiveConnectorTest
         assertUpdate("CREATE ROLE test_r_a_d2");
         assertUpdate("CREATE ROLE test_r_a_d3");
 
-        // nothing showing because no roles have been granted
-        assertQueryReturnsEmptyResult("SELECT * FROM information_schema.role_authorization_descriptors");
+        // showing 'admin' role by default
+        assertQuery("SELECT DISTINCT role_name FROM information_schema.role_authorization_descriptors", "VALUES 'admin'");
 
         // role_authorization_descriptors is not accessible for a non-admin user, even when it's empty
         assertQueryFails(user, "SELECT * FROM information_schema.role_authorization_descriptors",
@@ -5768,39 +5771,39 @@ public class TestHiveConnectorTest
             assertQuery(
                     "SELECT * FROM information_schema.table_privileges WHERE table_schema = 'bar'",
                     "VALUES " +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'UPDATE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'UPDATE', 'YES', null)");
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'one', 'UPDATE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'UPDATE', 'YES', null)");
             assertQuery(
                     "SELECT * FROM information_schema.table_privileges WHERE table_schema = 'bar' AND table_name = 'two'",
                     "VALUES " +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)");
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)");
             assertQuery(
                     "SELECT * FROM information_schema.table_privileges WHERE table_name = 'two'",
                     "VALUES " +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)");
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'two', 'UPDATE', 'YES', null)");
             assertQuery(
                     "SELECT * FROM information_schema.table_privileges WHERE table_name = 'three'",
                     "VALUES " +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'SELECT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'DELETE', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'INSERT', 'YES', null)," +
-                            "('admin', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'UPDATE', 'YES', null)");
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'SELECT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'DELETE', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'INSERT', 'YES', null)," +
+                            "('hive', 'USER', 'hive', 'USER', 'hive', 'bar', 'three', 'UPDATE', 'YES', null)");
         }
         finally {
             computeActual("DROP SCHEMA IF EXISTS foo");
@@ -7110,13 +7113,12 @@ public class TestHiveConnectorTest
 
     @Test
     public void testCreateAvroTableWithSchemaUrl()
-            throws Exception
     {
         String tableName = "test_create_avro_table_with_schema_url";
-        File schemaFile = createAvroSchemaFile();
+        String schemaFilePath = createAvroSchemaFile();
 
-        String createTableSql = getAvroCreateTableSql(tableName, schemaFile.getAbsolutePath());
-        String expectedShowCreateTable = getAvroCreateTableSql(tableName, schemaFile.toURI().toString());
+        String createTableSql = getAvroCreateTableSql(tableName, schemaFilePath);
+        String expectedShowCreateTable = getAvroCreateTableSql(tableName, schemaFilePath);
 
         assertUpdate(createTableSql);
 
@@ -7126,47 +7128,45 @@ public class TestHiveConnectorTest
         }
         finally {
             assertUpdate("DROP TABLE " + tableName);
-            verify(schemaFile.delete(), "cannot delete temporary file: %s", schemaFile);
+            verify(server.deleteHdfsFile(schemaFilePath), "cannot delete temporary file: %s", schemaFilePath);
         }
     }
 
     @Test
     public void testAlterAvroTableWithSchemaUrl()
-            throws Exception
     {
         testAlterAvroTableWithSchemaUrl(true, true, true);
     }
 
     protected void testAlterAvroTableWithSchemaUrl(boolean renameColumn, boolean addColumn, boolean dropColumn)
-            throws Exception
     {
         String tableName = "test_alter_avro_table_with_schema_url";
-        File schemaFile = createAvroSchemaFile();
+        String schemaFilePath = createAvroSchemaFile();
 
-        assertUpdate(getAvroCreateTableSql(tableName, schemaFile.getAbsolutePath()));
+        assertUpdate(getAvroCreateTableSql(tableName, schemaFilePath));
 
         try {
             if (renameColumn) {
-                assertQueryFails(format("ALTER TABLE %s RENAME COLUMN dummy_col TO new_dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s RENAME COLUMN string_col TO new_dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
             if (addColumn) {
-                assertQueryFails(format("ALTER TABLE %s ADD COLUMN new_dummy_col VARCHAR", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s ADD COLUMN new_string_col VARCHAR", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
             if (dropColumn) {
-                assertQueryFails(format("ALTER TABLE %s DROP COLUMN dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s DROP COLUMN string_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
         }
         finally {
             assertUpdate("DROP TABLE " + tableName);
-            verify(schemaFile.delete(), "cannot delete temporary file: %s", schemaFile);
+            verify(server.deleteHdfsFile(schemaFilePath), "cannot delete temporary file: %s", schemaFilePath);
         }
     }
 
     private String getAvroCreateTableSql(String tableName, String schemaFile)
     {
         return format("CREATE TABLE %s.%s.%s (\n" +
-                        "   dummy_col varchar,\n" +
-                        "   another_dummy_col varchar\n" +
+                        "   string_col varchar COMMENT '',\n" +
+                        "   string_col2 varchar COMMENT ''\n" +
                         ")\n" +
                         "WITH (\n" +
                         "   avro_schema_url = '%s',\n" +
@@ -7178,19 +7178,18 @@ public class TestHiveConnectorTest
                 schemaFile);
     }
 
-    private static File createAvroSchemaFile()
-            throws Exception
+    private String createAvroSchemaFile()
     {
-        File schemaFile = File.createTempFile("avro_single_column-", ".avsc");
+        String schemaFile = "avro_single_column-" + TestTable.randomTableSuffix() + ".avsc";
         String schema = "{\n" +
                 "  \"namespace\": \"io.trino.test\",\n" +
                 "  \"name\": \"single_column\",\n" +
                 "  \"type\": \"record\",\n" +
                 "  \"fields\": [\n" +
-                "    { \"name\":\"string_col\", \"type\":\"string\" }\n" +
+                "    { \"name\":\"string_col\", \"type\":\"string\" }," +
+                "    { \"name\":\"string_col2\", \"type\":\"string\" }\n" +
                 "]}";
-        asCharSink(schemaFile, UTF_8).write(schema);
-        return schemaFile;
+        return server.copyFileToContainer(schema.getBytes(UTF_8), "/tmp/" + schemaFile);
     }
 
     @Test
@@ -7280,7 +7279,7 @@ public class TestHiveConnectorTest
 
         hiveInsertTableHandle = getHiveInsertTableHandle(session, tableName);
         assertNotEquals(hiveInsertTableHandle.getLocationHandle().getWritePath(), hiveInsertTableHandle.getLocationHandle().getTargetPath());
-        assertTrue(hiveInsertTableHandle.getLocationHandle().getWritePath().toString().startsWith("file:/tmp/custom/temporary-"));
+        assertTrue(hiveInsertTableHandle.getLocationHandle().getWritePath().toString().startsWith("hdfs://hadoop-master:9000/tmp/custom/temporary-"));
 
         assertUpdate("DROP TABLE " + tableName);
     }

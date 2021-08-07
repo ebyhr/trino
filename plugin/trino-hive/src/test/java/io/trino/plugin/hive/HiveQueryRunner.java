@@ -162,7 +162,7 @@ public final class HiveQueryRunner
                 queryRunner.createCatalog("tpch", "tpch");
 
                 HiveMetastore metastore = this.metastore.apply(queryRunner);
-                queryRunner.installPlugin(new TestingHivePlugin(metastore, module));
+                queryRunner.installPlugin(new TestingHiveMetastorePlugin(metastore, module));
 
                 Map<String, String> hiveProperties = new HashMap<>();
                 if (!skipTimezoneSetup) {
@@ -254,7 +254,7 @@ public final class HiveQueryRunner
                 .build();
     }
 
-    private static void copyTpchTablesBucketed(
+    public static void copyTpchTablesBucketed(
             QueryRunner queryRunner,
             String sourceCatalog,
             String sourceSchema,
