@@ -378,24 +378,34 @@ public class TestIcebergSparkCompatibility
         String sparkTableName = sparkTableName(baseTableName);
         onTrino().executeQuery("DROP TABLE IF EXISTS " + trinoTableName);
 
-        onTrino().executeQuery(format("CREATE TABLE %s (_string VARCHAR, _varbinary VARBINARY, _bigint BIGINT) WITH (partitioning = ARRAY['_string', '_varbinary'], format = '%s')", trinoTableName, storageFormat));
-        onTrino().executeQuery(format("INSERT INTO %s VALUES ('a', X'0ff102f0feff', 1001), ('b', X'0ff102f0fefe', 1002), ('c', X'0ff102fdfeff', 1003)", trinoTableName));
+        onTrino().executeQuery(format("CREATE TABLE %s (_string VARCHAR, _varbinary VARBINARY, _bigint BIGINT, _struct ROW(_field BIGINT)) WITH (partitioning = ARRAY['_string', '_varbinary', '\"_struct._field\"'], format = '%s')", trinoTableName, storageFormat));
+        onTrino().executeQuery(format("INSERT INTO %s VALUES ('a', X'0ff102f0feff', 1001, ROW(1)), ('b', X'0ff102f0fefe', 1002, ROW(2)), ('c', X'0ff102fdfeff', 1003, ROW(3))", trinoTableName));
 
-        Row row1 = row("b", new byte[] {15, -15, 2, -16, -2, -2}, 1002);
-        String selectByString = "SELECT * FROM %s WHERE _string = 'b'";
+        Row row1 = row("b", new byte[]{15, -15, 2, -16, -2, -2}, 1002, 2);
+        String selectByString = "SELECT _string, _varbinary, _bigint, _struct._field FROM %s WHERE _string = 'b'";
         assertThat(onTrino().executeQuery(format(selectByString, trinoTableName)))
                 .containsOnly(row1);
+        // Parquet: [b, [15, -15, 2, -16, -2, -2], 1002, null]
+        // ORC: Caused by: org.apache.spark.SparkException: Job aborted due to stage failure: Task 0 in stage 50.0 failed 1 times, most recent failure: Lost task 0.0 in stage 50.0 (TID 86) (spark executor driver): java.lang.IndexOutOfBoundsException: Index 1 out of bounds for length 1
+        //	at java.base/jdk.internal.util.Preconditions.outOfBounds(Preconditions.java:64)
+        //	at java.base/jdk.internal.util.Preconditions.outOfBoundsCheckIndex(Preconditions.java:70)
+        //	at java.base/jdk.internal.util.Preconditions.checkIndex(Preconditions.java:248)
         assertThat(onSpark().executeQuery(format(selectByString, sparkTableName)))
                 .containsOnly(row1);
 
-        Row row2 = row("a", new byte[] {15, -15, 2, -16, -2, -1}, 1001);
-        String selectByVarbinary = "SELECT * FROM %s WHERE _varbinary = X'0ff102f0feff'";
+        Row row2 = row("a", new byte[]{15, -15, 2, -16, -2, -1}, 1001, 1);
+        String selectByVarbinary = "SELECT _string, _varbinary, _bigint, _struct._field FROM %s WHERE _varbinary = X'0ff102f0feff'";
         assertThat(onTrino().executeQuery(format(selectByVarbinary, trinoTableName)))
                 .containsOnly(row2);
         assertThat(onSpark().executeQuery(format(selectByVarbinary, sparkTableName)))
                 .containsOnly(row2);
 
-        onTrino().executeQuery("DROP TABLE " + trinoTableName);
+        Row row3 = row("a", new byte[]{15, -15, 2, -16, -2, -1}, 1001, 1);
+        String selectNested = "SELECT _string, _varbinary, _bigint, _struct._field FROM %s WHERE _struct._field = 1";
+        assertThat(onTrino().executeQuery(format(selectNested, trinoTableName)))
+                .containsOnly(row3);
+        assertThat(onSpark().executeQuery(format(selectNested, sparkTableName)))
+                .containsOnly(row3);
     }
 
     @Test(groups = {ICEBERG, PROFILE_SPECIFIC_TESTS}, dataProvider = "storageFormatsWithSpecVersion")
@@ -407,21 +417,25 @@ public class TestIcebergSparkCompatibility
         onSpark().executeQuery("DROP TABLE IF EXISTS " + sparkTableName);
 
         onSpark().executeQuery(format(
-                "CREATE TABLE %s (_string STRING, _varbinary BINARY, _bigint BIGINT) USING ICEBERG PARTITIONED BY (_string, _varbinary) TBLPROPERTIES ('write.format.default'='%s', 'format-version' = %s)",
+                "CREATE TABLE %s (_string STRING, _varbinary BINARY, _bigint BIGINT, _struct STRUCT<_field:STRING>) USING ICEBERG PARTITIONED BY (_string, _varbinary, _struct._field) TBLPROPERTIES ('write.format.default'='%s', 'format-version' = %s)",
                 sparkTableName,
                 storageFormat,
                 specVersion));
-        onSpark().executeQuery(format("INSERT INTO %s VALUES ('a', X'0ff102f0feff', 1001), ('b', X'0ff102f0fefe', 1002), ('c', X'0ff102fdfeff', 1003)", sparkTableName));
+        onSpark().executeQuery(format("INSERT INTO %s VALUES ('a', X'0ff102f0feff', 1001, named_struct('_field', 'field1')), ('b', X'0ff102f0fefe', 1002, named_struct('_field', 'field2')), ('c', X'0ff102fdfeff', 1003, named_struct('_field', 'field3'))", sparkTableName));
 
-        Row row1 = row("a", new byte[] {15, -15, 2, -16, -2, -1}, 1001);
-        String select = "SELECT * FROM %s WHERE _string = 'a'";
+        Row row1 = row("a", new byte[] {15, -15, 2, -16, -2, -1}, 1001, "field1");
+        String select = "SELECT _string, _varbinary, _bigint, _struct._field FROM %s WHERE _string = 'a'";
+        // ORC: Job aborted due to stage failure: Task 0 in stage 40.0 failed 1 times, most recent failure: Lost task 0.0 in stage 40.0 (TID 70) (spark executor driver): java.lang.IndexOutOfBoundsException: Index 1 out of bounds for length 1
+        //	at java.base/jdk.internal.util.Preconditions.outOfBounds(Preconditions.java:64)
+        //	at java.base/jdk.internal.util.Preconditions.outOfBoundsCheckIndex(Preconditions.java:70)
+        //	at java.base/jdk.internal.util.Preconditions.checkIndex(Preconditions.java:248)
         assertThat(onSpark().executeQuery(format(select, sparkTableName)))
                 .containsOnly(row1);
         assertThat(onTrino().executeQuery(format(select, trinoTableName)))
                 .containsOnly(row1);
 
-        Row row2 = row("c", new byte[] {15, -15, 2, -3, -2, -1}, 1003);
-        String selectByVarbinary = "SELECT * FROM %s WHERE _varbinary = X'0ff102fdfeff'";
+        Row row2 = row("c", new byte[] {15, -15, 2, -3, -2, -1}, 1003, "field3");
+        String selectByVarbinary = "SELECT _string, _varbinary, _bigint, _struct._field FROM %s WHERE _varbinary = X'0ff102fdfeff'";
         assertThat(onTrino().executeQuery(format(selectByVarbinary, trinoTableName)))
                 .containsOnly(row2);
         assertThat(onSpark().executeQuery(format(selectByVarbinary, sparkTableName)))

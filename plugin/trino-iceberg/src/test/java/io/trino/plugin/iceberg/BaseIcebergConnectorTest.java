@@ -3683,6 +3683,18 @@ public abstract class BaseIcebergConnectorTest
     }
 
     @Test
+    public void testCreateWithNestedPartitionedColTable()
+    {
+        assertUpdate("CREATE TABLE test_nested_partition (int INTEGER, str ROW(id INTEGER , vc VARCHAR)) WITH (partitioning = ARRAY['\"str.id\"'])");
+        assertUpdate("INSERT INTO test_nested_partition SELECT 1, (CAST(ROW(1, 'this is a random value') AS ROW(int, varchar)))", 1);
+
+        assertThat(query("SELECT int, str.id, str.vc FROM test_nested_partition"))
+                .matches("VALUES (1, 1, CAST('this is a random value' as varchar))");
+
+        dropTable("test_nested_partition");
+    }
+
+    @Test
     public void testSerializableReadIsolation()
     {
         assertUpdate("CREATE TABLE test_read_isolation (x int)");

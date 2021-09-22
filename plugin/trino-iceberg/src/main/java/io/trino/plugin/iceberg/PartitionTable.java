@@ -142,6 +142,7 @@ public class PartitionTable
 
     private static List<PartitionField> getAllPartitionFields(Table icebergTable)
     {
+        // TODO: Nested column doesn't appear in $partitions table
         Set<Integer> existingColumnsIds = icebergTable.schema()
                 .columns().stream()
                 .map(NestedField::fieldId)

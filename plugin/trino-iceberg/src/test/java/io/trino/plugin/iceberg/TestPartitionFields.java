@@ -16,6 +16,7 @@ package io.trino.plugin.iceberg;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.exceptions.ValidationException;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.DoubleType;
 import org.apache.iceberg.types.Types.ListType;
 import org.apache.iceberg.types.Types.LongType;
@@ -67,8 +68,10 @@ public class TestPartitionFields
         assertParse("void(\"quoted field\")", partitionSpec(builder -> builder.alwaysNull("quoted field")));
         assertParse("truncate(\"\"\"another\"\" \"\"quoted\"\" \"\"field\"\"\", 13)", partitionSpec(builder -> builder.truncate("\"another\" \"quoted\" \"field\"", 13)));
         assertParse("void(\"\"\"another\"\" \"\"quoted\"\" \"\"field\"\"\")", partitionSpec(builder -> builder.alwaysNull("\"another\" \"quoted\" \"field\"")));
+        assertParse("\"nested.value\"", partitionSpec(builder -> builder.identity("nested.value")));
 
         assertInvalid("bucket()", "Invalid partition field declaration: bucket()");
+        assertInvalid(".nested", "Invalid partition field declaration: .nested");
         assertInvalid("abc", "Cannot find source column: abc");
         assertInvalid("notes", "Cannot partition by non-primitive source field: list<string>");
         assertInvalid("bucket(price, 42)", "Cannot bucket by type: double");
@@ -122,7 +125,8 @@ public class TestPartitionFields
                 NestedField.optional(5, "notes", ListType.ofRequired(6, StringType.get())),
                 NestedField.optional(7, "quoted field", StringType.get()),
                 NestedField.optional(8, "quoted ts", TimestampType.withoutZone()),
-                NestedField.optional(9, "\"another\" \"quoted\" \"field\"", StringType.get()));
+                NestedField.optional(9, "\"another\" \"quoted\" \"field\"", StringType.get()),
+                NestedField.required(10, "nested", Types.StructType.of(NestedField.required(11, "value", StringType.get()))));
 
         PartitionSpec.Builder builder = PartitionSpec.builderFor(schema);
         consumer.accept(builder);

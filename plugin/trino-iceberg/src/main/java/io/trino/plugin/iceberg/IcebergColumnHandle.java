@@ -21,13 +21,17 @@ import com.google.common.collect.Iterables;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.type.Type;
+import io.trino.spi.type.TypeManager;
+import org.apache.iceberg.types.Types;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import static io.trino.plugin.iceberg.ColumnIdentity.createColumnIdentity;
 import static io.trino.plugin.iceberg.IcebergMetadataColumn.FILE_MODIFIED_TIME;
 import static io.trino.plugin.iceberg.IcebergMetadataColumn.FILE_PATH;
+import static io.trino.plugin.iceberg.TypeConverter.toTrinoType;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iceberg.MetadataColumns.IS_DELETED;
 import static org.apache.iceberg.MetadataColumns.ROW_POSITION;
@@ -261,5 +265,25 @@ public class IcebergColumnHandle
     public boolean isPathColumn()
     {
         return getColumnIdentity().getId() == FILE_PATH.getId();
+    }
+
+    public static IcebergColumnHandle create(Types.NestedField column, TypeManager typeManager)
+    {
+        return new IcebergColumnHandle(
+                createColumnIdentity(column),
+                toTrinoType(column.type(), typeManager),
+                ImmutableList.of(),
+                toTrinoType(column.type(), typeManager),
+                Optional.ofNullable(column.doc()));
+    }
+
+    public static IcebergColumnHandle create(String name, Types.NestedField column, TypeManager typeManager)
+    {
+        return new IcebergColumnHandle(
+                createColumnIdentity(name, column),
+                toTrinoType(column.type(), typeManager),
+                ImmutableList.of(),
+                toTrinoType(column.type(), typeManager),
+                Optional.ofNullable(column.doc()));
     }
 }
