@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.trino.plugin.bigquery.BigQueryQueryRunner.TEST_SCHEMA;
@@ -57,7 +58,7 @@ public class TestBigQueryInstanceCleaner
     @BeforeClass
     public void setUp()
     {
-        this.bigQuerySqlExecutor = new BigQuerySqlExecutor();
+        this.bigQuerySqlExecutor = new BigQuerySqlExecutor(Optional.empty());
     }
 
     @Test

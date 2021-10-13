@@ -29,6 +29,7 @@ import org.testng.annotations.Test;
 
 import java.util.Optional;
 
+import static io.trino.plugin.bigquery.BigQueryQueryRunner.TEST_SCHEMA;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.DecimalType.createDecimalType;
@@ -46,7 +47,7 @@ public class TestBigQueryTypeMapping
     @BeforeClass(alwaysRun = true)
     public void initBigQueryExecutor()
     {
-        bigQuerySqlExecutor = new BigQueryQueryRunner.BigQuerySqlExecutor();
+        bigQuerySqlExecutor = new BigQueryQueryRunner.BigQuerySqlExecutor(Optional.of(TEST_SCHEMA));
     }
 
     @Override
@@ -68,7 +69,7 @@ public class TestBigQueryTypeMapping
                 .addRoundTrip("float64", "CAST('NaN' AS float64)", DOUBLE, "nan()")
                 .addRoundTrip("float64", "CAST('Infinity' AS float64)", DOUBLE, "+infinity()")
                 .addRoundTrip("float64", "CAST('-Infinity' AS float64)", DOUBLE, "-infinity()")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.float"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("float"));
     }
 
     @Test
@@ -99,7 +100,7 @@ public class TestBigQueryTypeMapping
                 .addRoundTrip("NUMERIC(38, 9)", "NUMERIC '-100000000020000000001234567.123456789'", createDecimalType(38, 9), "CAST(-100000000020000000001234567.123456789 AS DECIMAL(38, 9))")
                 .addRoundTrip("NUMERIC(10, 3)", "CAST(NULL AS NUMERIC)", createDecimalType(10, 3), "CAST(NULL AS DECIMAL(10, 3))")
                 .addRoundTrip("NUMERIC(38, 9)", "CAST(NULL AS NUMERIC)", createDecimalType(38, 9), "CAST(NULL AS DECIMAL(38, 9))")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.numeric"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("numeric"));
     }
 
     @Test
@@ -145,7 +146,7 @@ public class TestBigQueryTypeMapping
                 .addRoundTrip("datetime", "datetime '1969-12-31 23:59:59.999949'", createTimestampType(6), "TIMESTAMP '1969-12-31 23:59:59.999949'")
                 .addRoundTrip("datetime", "datetime '1969-12-31 23:59:59.999994'", createTimestampType(6), "TIMESTAMP '1969-12-31 23:59:59.999994'")
 
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.datetime"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("datetime"));
     }
 
     @Test
@@ -167,7 +168,7 @@ public class TestBigQueryTypeMapping
                 .addRoundTrip("time", "'23:59:59.99999'", createTimeType(6), "TIME '23:59:59.999990'")
                 .addRoundTrip("time", "'23:59:59.999999'", createTimeType(6), "TIME '23:59:59.999999'")
 
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.time"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("time"));
     }
 
     @Test
@@ -200,7 +201,7 @@ public class TestBigQueryTypeMapping
                         TIMESTAMP_TZ_MICROS, "TIMESTAMP '2019-03-18 17:32:17.987000 UTC'")
                 .addRoundTrip("TIMESTAMP", "TIMESTAMP '2021-09-07 23:59:59.999999-00:00'",
                         TIMESTAMP_TZ_MICROS, "TIMESTAMP '2021-09-07 23:59:59.999999 UTC'")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.timestamp_tz"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("timestamp_tz"));
     }
 
     @Test
@@ -210,7 +211,7 @@ public class TestBigQueryTypeMapping
                 .addRoundTrip("GEOGRAPHY", "ST_GeogPoint(0, 0)", VARCHAR, "VARCHAR 'POINT(0 0)'")
                 .addRoundTrip("GEOGRAPHY", "ST_GeogPoint(90, -90)", VARCHAR, "VARCHAR 'POINT(90 -90)'")
                 .addRoundTrip("GEOGRAPHY", "NULL", VARCHAR, "CAST(NULL AS VARCHAR)")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.geography"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("geography"));
     }
 
     @Test
@@ -226,7 +227,7 @@ public class TestBigQueryTypeMapping
                         "ARRAY[CAST(ROW(1, 'string') AS ROW(x BIGINT, y VARCHAR))]")
                 .addRoundTrip("ARRAY<BOOLEAN>", "[]", new ArrayType(BOOLEAN), "CAST(ARRAY[] AS ARRAY<BOOLEAN>)")
                 .addRoundTrip("ARRAY<BOOLEAN>", "NULL", new ArrayType(BOOLEAN), "CAST(ARRAY[] AS ARRAY<BOOLEAN>)")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.array"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("array"));
     }
 
     @Test
@@ -249,7 +250,7 @@ public class TestBigQueryTypeMapping
                         "NULL",
                         RowType.from(ImmutableList.of(new Field(Optional.of("x"), BIGINT))),
                         "CAST(NULL AS ROW(x BIGINT))")
-                .execute(getQueryRunner(), bigqueryCreateAndInsert("test.struct"));
+                .execute(getQueryRunner(), bigqueryCreateAndInsert("struct"));
     }
 
     private DataSetup bigqueryCreateAndInsert(String tableNamePrefix)

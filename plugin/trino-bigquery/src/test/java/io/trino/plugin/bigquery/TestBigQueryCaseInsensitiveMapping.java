@@ -23,9 +23,11 @@ import io.trino.testing.sql.TestView;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static io.trino.plugin.bigquery.BigQueryQueryRunner.TEST_SCHEMA;
 import static io.trino.testing.sql.TestTable.randomTableSuffix;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
@@ -44,7 +46,7 @@ public class TestBigQueryCaseInsensitiveMapping
     @BeforeClass(alwaysRun = true)
     public void initBigQueryExecutor()
     {
-        this.bigQuerySqlExecutor = new BigQuerySqlExecutor();
+        this.bigQuerySqlExecutor = new BigQuerySqlExecutor(Optional.of(TEST_SCHEMA));
     }
 
     @Override

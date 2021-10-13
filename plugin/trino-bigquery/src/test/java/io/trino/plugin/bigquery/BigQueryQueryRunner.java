@@ -41,6 +41,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.google.cloud.bigquery.BigQuery.DatasetDeleteOption.deleteContents;
 import static com.google.cloud.bigquery.BigQuery.DatasetListOption.labelFilter;
@@ -100,10 +101,12 @@ public final class BigQueryQueryRunner
         private static final Map.Entry<String, String> BIG_QUERY_SQL_EXECUTOR_LABEL = Maps.immutableEntry("ci-automation-source", "trino_tests_big_query_sql_executor");
 
         private final BigQuery bigQuery;
+        private final Optional<String> defaultDataset;
 
-        public BigQuerySqlExecutor()
+        public BigQuerySqlExecutor(Optional<String> defaultDataset)
         {
             this.bigQuery = createBigQueryClient();
+            this.defaultDataset = defaultDataset;
         }
 
         @Override
@@ -114,8 +117,11 @@ public final class BigQueryQueryRunner
 
         public TableResult executeQuery(String sql)
         {
+            QueryJobConfiguration.Builder queryJob = QueryJobConfiguration.newBuilder(sql);
+            defaultDataset.ifPresent(queryJob::setDefaultDataset);
+
             try {
-                return bigQuery.query(QueryJobConfiguration.of(sql));
+                return bigQuery.query(queryJob.build());
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

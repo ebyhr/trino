@@ -24,8 +24,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.trino.plugin.bigquery.BigQueryQueryRunner.BigQuerySqlExecutor;
+import static io.trino.plugin.bigquery.BigQueryQueryRunner.TEST_SCHEMA;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static io.trino.testing.MaterializedResult.resultBuilder;
 import static io.trino.testing.assertions.Assert.assertEquals;
@@ -44,7 +46,7 @@ public class TestBigQueryIntegrationSmokeTest
     @BeforeClass(alwaysRun = true)
     public void initBigQueryExecutor()
     {
-        this.bigQuerySqlExecutor = new BigQuerySqlExecutor();
+        this.bigQuerySqlExecutor = new BigQuerySqlExecutor(Optional.of(TEST_SCHEMA));
     }
 
     @Override
@@ -197,7 +199,7 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.hourly_partitioned",
+                "hourly_partitioned",
                 "(value INT64, ts TIMESTAMP) PARTITION BY TIMESTAMP_TRUNC(ts, HOUR)",
                 List.of("1000, '2018-01-01 10:00:00'"))) {
             assertQuery("SELECT COUNT(1) FROM " + table.getName(), "VALUES 1");
@@ -209,7 +211,7 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.yearly_partitioned",
+                "yearly_partitioned",
                 "(value INT64, ts TIMESTAMP) PARTITION BY TIMESTAMP_TRUNC(ts, YEAR)",
                 List.of("1000, '2018-01-01 10:00:00'"))) {
             assertQuery("SELECT COUNT(1) FROM " + table.getName(), "VALUES 1");
@@ -221,7 +223,7 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.select_with_single_quote",
+                "select_with_single_quote",
                 "(col INT64, val STRING)",
                 List.of("1, 'escape\\'single quote'"))) {
             assertQuery("SELECT val FROM " + table.getName() + " WHERE val = 'escape''single quote'", "VALUES 'escape''single quote'");
@@ -233,7 +235,7 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.predicate_pushdown_prunned_columns",
+                "predicate_pushdown_prunned_columns",
                 "(a INT64, b INT64, c INT64)",
                 List.of("1, 2, 3"))) {
             assertQuery(
@@ -249,10 +251,10 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.count_aggregation_table",
+                "count_aggregation_table",
                 "(a INT64, b INT64, c INT64)",
                 List.of("1, 2, 3", "4, 5, 6"));
-                TestView view = new TestView(bigQuerySqlExecutor, "test.count_aggregation_view", "SELECT * FROM " + table.getName())) {
+                TestView view = new TestView(bigQuerySqlExecutor, "count_aggregation_view", "SELECT * FROM " + table.getName())) {
             assertQuery("SELECT count(*) FROM " + view.getName(), "VALUES (2)");
             assertQuery("SELECT count(*) FROM " + view.getName() + " WHERE a = 1", "VALUES (1)");
             assertQuery("SELECT count(a) FROM " + view.getName() + " WHERE b = 2", "VALUES (1)");
@@ -265,7 +267,7 @@ public class TestBigQueryIntegrationSmokeTest
     @Test
     public void testRepeatCountAggregationView()
     {
-        try (TestView view = new TestView(bigQuerySqlExecutor, "test.repeat_count_aggregation_view", "SELECT 1 AS col1")) {
+        try (TestView view = new TestView(bigQuerySqlExecutor, "repeat_count_aggregation_view", "SELECT 1 AS col1")) {
             assertQuery("SELECT count(*) FROM " + view.getName(), "VALUES (1)");
             assertQuery("SELECT count(*) FROM " + view.getName(), "VALUES (1)");
         }
@@ -277,7 +279,7 @@ public class TestBigQueryIntegrationSmokeTest
     @Test
     public void testColumnPositionMismatch()
     {
-        try (TestTable table = new TestTable(getQueryRunner()::execute, "test.test_column_position_mismatch", "(c_varchar VARCHAR, c_int INT, c_date DATE)")) {
+        try (TestTable table = new TestTable(getQueryRunner()::execute, "test_column_position_mismatch", "(c_varchar VARCHAR, c_int INT, c_date DATE)")) {
             onBigQuery("INSERT INTO " + table.getName() + " VALUES ('a', 1, '2021-01-01')");
             // Adding a CAST makes BigQuery return columns in a different order
             assertQuery("SELECT c_varchar, CAST(c_int AS SMALLINT), c_date FROM " + table.getName(), "VALUES ('a', 1, '2021-01-01')");
@@ -328,7 +330,7 @@ public class TestBigQueryIntegrationSmokeTest
     {
         try (TestTable table = new TestTable(
                 bigQuerySqlExecutor,
-                "test.test_skip_unsupported_type",
+                "test_skip_unsupported_type",
                 "(a INT64, unsupported BIGNUMERIC, b INT64)",
                 List.of("1, 999, 2"))) {
             assertQuery("SELECT * FROM " + table.getName(), "VALUES (1, 2)");
