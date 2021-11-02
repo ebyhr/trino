@@ -83,7 +83,7 @@ public final class LazyConnectionFactory
                 throws SQLException
         {
             closed = true;
-            if (connection != null) {
+            if (connection != null && !connection.isClosed()) {
                 connection.close();
             }
         }
