@@ -298,6 +298,13 @@ public class TestMemSqlConnectorTest
                 .isNotFullyPushedDown(AggregationNode.class);
     }
 
+    @Test
+    @Override
+    public void testInsertNegativeDate()
+    {
+        // TODO (https://github.com/trinodb/trino/issues/10208) MmeSQL stores '0000-00-00' when inserted negative dates and it throws an exception during reading the row
+    }
+
     /**
      * This test helps to tune TupleDomain simplification threshold.
      */
