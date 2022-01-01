@@ -196,12 +196,11 @@ public class CassandraClientModule
                     config.getSpeculativeExecutionLimit().get())); // maximum number of executions
         }
 
+        contactPoints.forEach(clusterBuilder::addContactPoint);
+
         return new CassandraSession(
                 extraColumnMetadataCodec,
-                new ReopeningCluster(() -> {
-                    contactPoints.forEach(clusterBuilder::addContactPoint);
-                    return clusterBuilder.build();
-                }),
+                clusterBuilder.build(),
                 config.getNoHostAvailableRetryTimeout());
     }
 
