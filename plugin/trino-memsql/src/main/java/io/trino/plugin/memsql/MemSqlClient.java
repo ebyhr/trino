@@ -193,6 +193,13 @@ public class MemSqlClient
     }
 
     @Override
+    public Optional<String> getTableComment(ResultSet resultSet)
+    {
+        // Don't return a comment until the connector supports creating tables with comment
+        return Optional.empty();
+    }
+
+    @Override
     public List<JdbcColumnHandle> getColumns(ConnectorSession session, JdbcTableHandle tableHandle)
     {
         if (tableHandle.getColumns().isPresent()) {

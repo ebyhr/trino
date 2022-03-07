@@ -32,6 +32,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Types;
 import java.util.Collection;
 import java.util.List;
@@ -97,6 +98,13 @@ class TestingH2JdbcClient
                         .withMaxAttempts(100)
                         .onRetry(event -> log.warn(event.getLastFailure(), "Failed to list schemas, retrying")))
                 .get(() -> super.listSchemas(connection));
+    }
+
+    @Override
+    public Optional<String> getTableComment(ResultSet resultSet)
+    {
+        // Don't return a comment until the connector supports creating tables with comment
+        return Optional.empty();
     }
 
     @Override
