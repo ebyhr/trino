@@ -131,7 +131,7 @@
         <module>plugin/trino-kudu</module>
         <module>plugin/trino-local-file</module>
         <module>plugin/trino-memory</module>
-        <module>plugin/trino-memsql</module>
+        <module>plugin/trino-singlestore</module>
         <module>plugin/trino-ml</module>
         <module>plugin/trino-mongodb</module>
         <module>plugin/trino-mysql</module>
