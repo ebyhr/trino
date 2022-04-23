@@ -45,6 +45,7 @@ public class IcebergPageSinkProvider
     private final JsonCodec<CommitTaskData> jsonCodec;
     private final IcebergFileWriterFactory fileWriterFactory;
     private final PageIndexerFactory pageIndexerFactory;
+    private final FileIoProvider fileIoProvider;
     private final int maxOpenPartitions;
 
     @Inject
@@ -53,12 +54,14 @@ public class IcebergPageSinkProvider
             JsonCodec<CommitTaskData> jsonCodec,
             IcebergFileWriterFactory fileWriterFactory,
             PageIndexerFactory pageIndexerFactory,
+            FileIoProvider fileIoProvider,
             IcebergConfig config)
     {
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.jsonCodec = requireNonNull(jsonCodec, "jsonCodec is null");
         this.fileWriterFactory = requireNonNull(fileWriterFactory, "fileWriterFactory is null");
         this.pageIndexerFactory = requireNonNull(pageIndexerFactory, "pageIndexerFactory is null");
+        this.fileIoProvider = requireNonNull(fileIoProvider, "fileIoProvider is null");
         requireNonNull(config, "config is null");
         this.maxOpenPartitions = config.getMaxPartitionsPerWriter();
     }
@@ -90,6 +93,7 @@ public class IcebergPageSinkProvider
                 pageIndexerFactory,
                 hdfsEnvironment,
                 hdfsContext,
+                fileIoProvider,
                 tableHandle.getInputColumns(),
                 jsonCodec,
                 session,
@@ -118,6 +122,7 @@ public class IcebergPageSinkProvider
                         pageIndexerFactory,
                         hdfsEnvironment,
                         hdfsContext,
+                        fileIoProvider,
                         optimizeHandle.getTableColumns(),
                         jsonCodec,
                         session,

@@ -162,6 +162,7 @@ public class TestIcebergNodeLocalDynamicSplitPruning
                 ImmutableList.of(),
                 PartitionSpecParser.toJson(PartitionSpec.unpartitioned()),
                 PartitionData.toJson(new PartitionData(new Object[] {})),
+                Optional.empty(),
                 ImmutableList.of(),
                 SplitWeight.standard());
 

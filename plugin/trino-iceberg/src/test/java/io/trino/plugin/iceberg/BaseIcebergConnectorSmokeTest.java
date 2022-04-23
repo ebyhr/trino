@@ -14,6 +14,7 @@
 package io.trino.plugin.iceberg;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import io.trino.testing.BaseConnectorSmokeTest;
 import io.trino.testing.TestingConnectorBehavior;
 import io.trino.testing.sql.TestTable;
@@ -21,6 +22,7 @@ import org.apache.iceberg.FileFormat;
 import org.testng.annotations.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -39,6 +41,11 @@ public abstract class BaseIcebergConnectorSmokeTest
         extends BaseConnectorSmokeTest
 {
     protected final FileFormat format;
+
+    protected Map<String, String> additionalIcebergProperties()
+    {
+        return ImmutableMap.of();
+    }
 
     public BaseIcebergConnectorSmokeTest(FileFormat format)
     {

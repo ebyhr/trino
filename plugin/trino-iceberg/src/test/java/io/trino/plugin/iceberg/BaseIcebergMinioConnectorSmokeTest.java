@@ -60,6 +60,7 @@ public abstract class BaseIcebergMinioConnectorSmokeTest
                                 .put("hive.s3.endpoint", "http://" + hiveMinioDataLake.getMinio().getMinioApiEndpoint())
                                 .put("hive.s3.path-style-access", "true")
                                 .put("hive.s3.streaming.part-size", "5MB")
+                                .putAll(additionalIcebergProperties())
                                 .buildOrThrow())
                 .setSchemaInitializer(
                         SchemaInitializer.builder()

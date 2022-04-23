@@ -141,6 +141,7 @@ public final class IcebergQueryRunner
         try {
             queryRunner = IcebergQueryRunner.builder()
                     .setExtraProperties(ImmutableMap.of("http-server.http.port", "8080"))
+                    .setIcebergProperties(Map.of("iceberg.compression-codec", "snappy"))
                     .setInitialTables(TpchTable.getTables())
                     .build();
         }
