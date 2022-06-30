@@ -400,6 +400,7 @@ public class IcebergSplitSource
     private static String hadoopPath(String path)
     {
         // hack to preserve the original path for S3 if necessary
+        path = "s3:///ebyhr-test/test/data/20220629_203213_00021_2ak3t-e0927fc8-dfd8-468f-8ee9-4929c29ebb59.orc";
         Path hadoopPath = new Path(path);
         if ("s3".equals(hadoopPath.toUri().getScheme()) && !path.equals(hadoopPath.toString())) {
             if (hadoopPath.toUri().getFragment() != null) {

@@ -637,12 +637,12 @@ public class IcebergMetadata
         HdfsContext hdfsContext = new HdfsContext(session);
         try {
             Path path = new Path(location);
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path);
-            if (fileSystem.exists(path) && fileSystem.listFiles(path, true).hasNext()) {
-                throw new TrinoException(ICEBERG_FILESYSTEM_ERROR, format(
-                        "Cannot create a table on a non-empty location: %s, set 'iceberg.unique-table-location=true' in your Iceberg catalog properties " +
-                        "to use unique table locations for every table.", location));
-            }
+//            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path);
+//            if (fileSystem.exists(path) && fileSystem.listFiles(path, true).hasNext()) {
+//                throw new TrinoException(ICEBERG_FILESYSTEM_ERROR, format(
+//                        "Cannot create a table on a non-empty location: %s, set 'iceberg.unique-table-location=true' in your Iceberg catalog properties " +
+//                        "to use unique table locations for every table.", location));
+//            }
             return new IcebergWritableTableHandle(
                     tableMetadata.getTable().getSchemaName(),
                     tableMetadata.getTable().getTableName(),
@@ -654,7 +654,7 @@ public class IcebergMetadata
                     transaction.table().properties(),
                     retryMode);
         }
-        catch (IOException e) {
+        catch (Throwable e) {
             throw new TrinoException(ICEBERG_FILESYSTEM_ERROR, "Failed checking new table's location: " + location, e);
         }
     }
