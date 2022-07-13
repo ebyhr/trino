@@ -42,6 +42,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
+import static com.google.cloud.bigquery.TableDefinition.Type.EXTERNAL;
 import static com.google.cloud.bigquery.TableDefinition.Type.MATERIALIZED_VIEW;
 import static com.google.cloud.bigquery.TableDefinition.Type.TABLE;
 import static com.google.cloud.bigquery.TableDefinition.Type.VIEW;
@@ -123,7 +124,7 @@ public class BigQuerySplitManager
             // Storage API doesn't support reading wildcard tables
             return ImmutableList.of(BigQuerySplit.forViewStream(columns, filter));
         }
-        if (type == MATERIALIZED_VIEW) {
+        if (type == MATERIALIZED_VIEW || type == EXTERNAL) {
             // Storage API doesn't support reading materialized views
             return ImmutableList.of(BigQuerySplit.forViewStream(columns, filter));
         }
