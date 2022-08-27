@@ -41,13 +41,13 @@ public class TestMariaDbConnectorTest
     public void testRenameColumn()
     {
         assertThatThrownBy(super::testRenameColumn)
-                .hasMessageContaining("Rename column not supported for the MariaDB server version");
+                .hasMessageContaining("You have an error in your SQL syntax");
     }
 
     @Override
     public void testAlterTableRenameColumnToLongName()
     {
         assertThatThrownBy(super::testAlterTableRenameColumnToLongName)
-                .hasMessageContaining("Rename column not supported for the MariaDB server version");
+                .hasMessageContaining("You have an error in your SQL syntax");
     }
 }
