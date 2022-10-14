@@ -51,7 +51,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.trino.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static io.trino.spi.ptf.ReturnTypeSpecification.GenericTable.GENERIC_TABLE;
 import static io.trino.spi.type.VarcharType.VARCHAR;
-import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class Query
@@ -108,13 +107,6 @@ public class Query
             String database = ((Slice) ((ScalarArgument) arguments.get("DATABASE")).getValue()).toStringUtf8();
             String collection = ((Slice) ((ScalarArgument) arguments.get("COLLECTION")).getValue()).toStringUtf8();
             String filter = ((Slice) ((ScalarArgument) arguments.get("FILTER")).getValue()).toStringUtf8();
-            // TODO https://github.com/trinodb/trino/issues/14591 Support case insensitive name matching
-            if (!database.equals(database.toLowerCase(ENGLISH))) {
-                throw new TrinoException(INVALID_FUNCTION_ARGUMENT, "Only lowercase database name is supported");
-            }
-            if (!collection.equals(collection.toLowerCase(ENGLISH))) {
-                throw new TrinoException(INVALID_FUNCTION_ARGUMENT, "Only lowercase collection name is supported");
-            }
 
             MongoTableHandle tableHandle = new MongoTableHandle(new SchemaTableName(database, collection), Optional.of(parseFilter(filter)));
             ConnectorTableSchema tableSchema = metadata.getTableSchema(session, tableHandle);

@@ -42,6 +42,7 @@ import java.util.OptionalInt;
 import static io.trino.testing.sql.TestTable.randomTableSuffix;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Locale.ENGLISH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testng.Assert.assertEquals;
@@ -638,6 +639,19 @@ public abstract class BaseMongoConnectorTest
     {
         assertThat(query("SELECT * FROM TABLE(mongodb.system.query(database => 'tpch', collection => 'region', filter => '{ regionkey: 999 }'))"))
                 .returnsEmptyResult();
+    }
+
+    @Test
+    public void testNativeQueryCaseInsensitive()
+    {
+        String databaseName = "TestDatabase" + randomTableSuffix();
+        String collectionName = "TestCollection" + randomTableSuffix();
+        MongoCollection<Document> collection = client.getDatabase(databaseName).getCollection(collectionName);
+        collection.insertOne(new Document("a", 1));
+
+        assertQuery("SELECT * FROM TABLE(mongodb.system.query(database => '" + databaseName + "', collection => '" + collectionName + "', filter => '{}'))", "VALUES 1");
+        assertQuery("SELECT * FROM TABLE(mongodb.system.query(database => '" + databaseName.toLowerCase(ENGLISH) + "', collection => '" + collectionName.toLowerCase(ENGLISH) + "', filter => '{}'))", "VALUES 1");
+        assertQuery("SELECT * FROM TABLE(mongodb.system.query(database => '" + databaseName.toUpperCase(ENGLISH) + "', collection => '" + collectionName.toUpperCase(ENGLISH) + "', filter => '{}'))", "VALUES 1");
     }
 
     @Test
