@@ -97,7 +97,7 @@ public final class DateTimeFunctions
     }
 
     @Description("Current date")
-    @ScalarFunction
+    @ScalarFunction(deterministic = false)
     @SqlType(StandardTypes.DATE)
     public static long currentDate(ConnectorSession session)
     {

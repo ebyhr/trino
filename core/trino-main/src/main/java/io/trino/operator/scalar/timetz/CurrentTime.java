@@ -32,7 +32,7 @@ import static io.trino.type.DateTimes.PICOSECONDS_PER_NANOSECOND;
 import static io.trino.type.DateTimes.round;
 import static java.lang.Math.floorMod;
 
-@ScalarFunction(value = "$current_time", hidden = true)
+@ScalarFunction(value = "$current_time", hidden = true, deterministic = false)
 public final class CurrentTime
 {
     private CurrentTime() {}

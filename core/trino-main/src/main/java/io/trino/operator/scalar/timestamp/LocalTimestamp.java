@@ -31,7 +31,7 @@ import static io.trino.type.DateTimes.PICOSECONDS_PER_NANOSECOND;
 import static io.trino.type.DateTimes.epochSecondToMicrosWithRounding;
 import static io.trino.type.DateTimes.round;
 
-@ScalarFunction(value = "$localtimestamp", hidden = true)
+@ScalarFunction(value = "$localtimestamp", hidden = true, deterministic = false)
 public final class LocalTimestamp
 {
     private LocalTimestamp() {}
