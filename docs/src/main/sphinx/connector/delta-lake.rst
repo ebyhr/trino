@@ -100,7 +100,6 @@ values. Typical usage does not require you to configure them.
 
         * ``NONE``
         * ``SNAPPY``
-        * ``LZ4``
         * ``ZSTD``
         * ``GZIP``
       - ``SNAPPY``
@@ -217,11 +216,6 @@ connector.
       - A decimal value in the range (0, 1] used as a minimum for weights assigned to each split. A low value may improve performance
         on tables with small files. A higher value may improve performance for queries with highly skewed aggregations or joins.
       - 0.05
-    * - ``parquet.optimized-writer.enabled``
-      - Whether the optimized writer should be used when writing Parquet files.
-        The equivalent catalog session property is
-        ``parquet_optimized_writer_enabled``.
-      - ``true``
     * - ``parquet.optimized-reader.enabled``
       - Whether batched column readers should be used when reading Parquet files
         for improved performance. Set this property to ``false`` to disable the
@@ -240,9 +234,6 @@ configure processing of Parquet files.
     * - Property name
       - Description
       - Default
-    * - ``parquet_optimized_writer_enabled``
-      - Whether the optimized writer should be used when writing Parquet files.
-      - ``true``
     * - ``parquet_optimized_reader_enabled``
       - Whether batched column readers should be used when reading Parquet files
         for improved performance.
