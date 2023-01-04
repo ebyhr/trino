@@ -70,6 +70,9 @@ public class TestRedshiftConnectorTest
             case SUPPORTS_CREATE_TABLE_WITH_COLUMN_COMMENT:
                 return false;
 
+            case SUPPORTS_SET_COLUMN_TYPE:
+                return false;
+
             case SUPPORTS_ARRAY:
             case SUPPORTS_ROW_TYPE:
                 return false;

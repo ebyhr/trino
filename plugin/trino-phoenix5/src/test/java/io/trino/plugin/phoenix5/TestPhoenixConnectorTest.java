@@ -105,6 +105,9 @@ public class TestPhoenixConnectorTest
             case SUPPORTS_ADD_COLUMN_WITH_COMMENT:
                 return false;
 
+            case SUPPORTS_SET_COLUMN_TYPE:
+                return false;
+
             case SUPPORTS_COMMENT_ON_TABLE:
             case SUPPORTS_COMMENT_ON_COLUMN:
                 return false;

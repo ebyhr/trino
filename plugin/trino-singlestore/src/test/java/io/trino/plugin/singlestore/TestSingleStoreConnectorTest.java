@@ -96,6 +96,9 @@ public class TestSingleStoreConnectorTest
             case SUPPORTS_COMMENT_ON_COLUMN:
                 return false;
 
+            case SUPPORTS_SET_COLUMN_TYPE:
+                return false;
+
             case SUPPORTS_ARRAY:
             case SUPPORTS_ROW_TYPE:
                 return false;

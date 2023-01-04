@@ -70,6 +70,9 @@ public abstract class BaseClickHouseConnectorTest
             case SUPPORTS_DELETE:
                 return false;
 
+            case SUPPORTS_SET_COLUMN_TYPE:
+                return false;
+
             case SUPPORTS_ARRAY:
             case SUPPORTS_ROW_TYPE:
             case SUPPORTS_NEGATIVE_DATE:
