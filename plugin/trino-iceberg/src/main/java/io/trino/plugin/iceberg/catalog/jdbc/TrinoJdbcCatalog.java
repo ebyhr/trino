@@ -190,14 +190,16 @@ public class TrinoJdbcCatalog
     }
 
     @Override
-    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName)
+    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName, boolean deleteData)
     {
         BaseTable table = (BaseTable) loadTable(session, schemaTableName);
         validateTableCanBeDropped(table);
 
         jdbcCatalog.dropTable(toIdentifier(schemaTableName), false);
-        dropTableData(table.io(), table.operations().current());
-        deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, table.location());
+        if (deleteData) {
+            dropTableData(table.io(), table.operations().current());
+            deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, table.location());
+        }
     }
 
     @Override

@@ -300,7 +300,7 @@ public class TrinoHiveCatalog
     }
 
     @Override
-    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName)
+    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName, boolean deleteData)
     {
         BaseTable table = (BaseTable) loadTable(session, schemaTableName);
         TableMetadata metadata = table.operations().current();
@@ -312,10 +312,12 @@ public class TrinoHiveCatalog
                 schemaTableName.getSchemaName(),
                 schemaTableName.getTableName(),
                 false /* do not delete data */);
-        // Use the Iceberg routine for dropping the table data because the data files
-        // of the Iceberg table may be located in different locations
-        dropTableData(table.io(), metadata);
-        deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, metastoreTable.getStorage().getLocation());
+        if (deleteData) {
+            // Use the Iceberg routine for dropping the table data because the data files
+            // of the Iceberg table may be located in different locations
+            dropTableData(table.io(), metadata);
+            deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, metastoreTable.getStorage().getLocation());
+        }
     }
 
     @Override

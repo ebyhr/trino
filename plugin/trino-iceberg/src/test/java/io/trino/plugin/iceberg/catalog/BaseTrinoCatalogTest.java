@@ -155,7 +155,7 @@ public abstract class BaseTrinoCatalogTest
             assertEquals(icebergTable.location(), tableLocation);
             assertThat(icebergTable.properties()).containsAllEntriesOf(tableProperties);
 
-            catalog.dropTable(SESSION, schemaTableName);
+            catalog.dropTable(SESSION, schemaTableName, true);
             assertThat(catalog.listTables(SESSION, Optional.of(namespace))).doesNotContain(schemaTableName);
             assertThat(catalog.listTables(SESSION, Optional.empty())).doesNotContain(schemaTableName);
         }
@@ -205,7 +205,7 @@ public abstract class BaseTrinoCatalogTest
             assertThat(catalog.listTables(SESSION, Optional.of(namespace))).doesNotContain(sourceSchemaTableName);
             assertThat(catalog.listTables(SESSION, Optional.of(targetNamespace))).contains(targetSchemaTableName);
 
-            catalog.dropTable(SESSION, targetSchemaTableName);
+            catalog.dropTable(SESSION, targetSchemaTableName, true);
         }
         finally {
             try {

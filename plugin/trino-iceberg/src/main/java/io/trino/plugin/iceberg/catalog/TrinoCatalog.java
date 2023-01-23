@@ -75,7 +75,7 @@ public interface TrinoCatalog
 
     void registerTable(ConnectorSession session, SchemaTableName tableName, String tableLocation, String metadataLocation);
 
-    void dropTable(ConnectorSession session, SchemaTableName schemaTableName);
+    void dropTable(ConnectorSession session, SchemaTableName schemaTableName, boolean deleteData);
 
     void renameTable(ConnectorSession session, SchemaTableName from, SchemaTableName to);
 

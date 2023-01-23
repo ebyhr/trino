@@ -343,7 +343,7 @@ public class TrinoGlueCatalog
     }
 
     @Override
-    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName)
+    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName, boolean deleteData)
     {
         BaseTable table = (BaseTable) loadTable(session, schemaTableName);
         validateTableCanBeDropped(table);
@@ -353,8 +353,10 @@ public class TrinoGlueCatalog
         catch (AmazonServiceException e) {
             throw new TrinoException(HIVE_METASTORE_ERROR, e);
         }
-        dropTableData(table.io(), table.operations().current());
-        deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, table.location());
+        if (deleteData) {
+            dropTableData(table.io(), table.operations().current());
+            deleteTableDirectory(fileSystemFactory.create(session), schemaTableName, table.location());
+        }
     }
 
     @Override
@@ -822,7 +824,7 @@ public class TrinoGlueCatalog
             catch (RuntimeException e) {
                 try {
                     // Update failed, clean up new storage table
-                    dropTable(session, storageTable);
+                    dropTable(session, storageTable, true);
                 }
                 catch (RuntimeException suppressed) {
                     LOG.warn(suppressed, "Failed to drop new storage table '%s' for materialized view '%s'", storageTable, viewName);
@@ -860,7 +862,7 @@ public class TrinoGlueCatalog
             String storageSchema = Optional.ofNullable(parameters.get(STORAGE_SCHEMA))
                     .orElse(view.getDatabaseName());
             try {
-                dropTable(session, new SchemaTableName(storageSchema, storageTableName));
+                dropTable(session, new SchemaTableName(storageSchema, storageTableName), true);
             }
             catch (TrinoException e) {
                 LOG.warn(e, "Failed to drop storage table '%s.%s' for materialized view '%s'", storageSchema, storageTableName, view.getName());

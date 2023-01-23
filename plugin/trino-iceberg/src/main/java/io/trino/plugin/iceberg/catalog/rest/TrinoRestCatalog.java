@@ -212,7 +212,7 @@ public class TrinoRestCatalog
     }
 
     @Override
-    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName)
+    public void dropTable(ConnectorSession session, SchemaTableName schemaTableName, boolean deleteData)
     {
         if (!restSessionCatalog.dropTable(convert(session), toIdentifier(schemaTableName))) {
             throw new TrinoException(ICEBERG_CATALOG_ERROR, format("Failed to drop table: %s", schemaTableName));

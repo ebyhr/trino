@@ -1412,7 +1412,7 @@ public class IcebergMetadata
     @Override
     public void dropTable(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
-        catalog.dropTable(session, ((IcebergTableHandle) tableHandle).getSchemaTableName());
+        catalog.dropTable(session, ((IcebergTableHandle) tableHandle).getSchemaTableName(), true);
     }
 
     @Override

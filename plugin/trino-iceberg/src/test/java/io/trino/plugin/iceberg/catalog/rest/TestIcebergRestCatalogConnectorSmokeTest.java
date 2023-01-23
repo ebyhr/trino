@@ -163,4 +163,11 @@ public class TestIcebergRestCatalogConnectorSmokeTest
         assertThatThrownBy(super::testRegisterTableWithMetadataFile)
                 .hasMessageContaining("metadata location for register_table is not supported");
     }
+
+    @Override
+    public void testUnregisterTable()
+    {
+        assertThatThrownBy(super::testUnregisterTable)
+                .hasMessageContaining("register_table procedure is disabled");
+    }
 }
