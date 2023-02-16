@@ -39,7 +39,6 @@ import io.trino.spi.connector.ConnectorPageSink;
 import io.trino.spi.connector.ConnectorPageSource;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.predicate.TupleDomain;
-import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.Type;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -61,7 +60,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.airlift.json.JsonCodec.listJsonCodec;
 import static io.airlift.slice.Slices.utf8Slice;
@@ -76,7 +74,6 @@ import static io.trino.plugin.deltalake.transactionlog.TransactionLogParser.dese
 import static io.trino.spi.block.ColumnarRow.toColumnarRow;
 import static io.trino.spi.predicate.Utils.nativeValueToBlock;
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.spi.type.TimestampType.TIMESTAMP_MILLIS;
 import static io.trino.spi.type.TinyintType.TINYINT;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static java.lang.Math.toIntExact;
@@ -360,20 +357,15 @@ public class DeltaLakeMergeSink
         try {
             Closeable rollbackAction = () -> fileSystem.deleteFile(path);
 
-            List<Type> parquetTypes = dataColumns.stream()
-                    .map(column -> {
-                        Type type = column.getType();
-                        if (type instanceof TimestampWithTimeZoneType timestamp) {
-                            verify(timestamp.getPrecision() == 3, "Unsupported type: %s", type);
-                            return TIMESTAMP_MILLIS;
-                        }
-                        return type;
-                    })
-                    .collect(toImmutableList());
+            ImmutableList.Builder<String> dataColumnNamesBuilder = ImmutableList.builderWithExpectedSize(dataColumns.size());
+            ImmutableList.Builder<Type> parquetTypesBuilder = ImmutableList.builderWithExpectedSize(dataColumns.size());
+            for (DeltaLakeColumnHandle column : dataColumns) {
+                dataColumnNamesBuilder.add(column.getPhysicalName());
+                parquetTypesBuilder.add(column.getPhysicalType());
+            }
 
-            List<String> dataColumnNames = dataColumns.stream()
-                    .map(DeltaLakeColumnHandle::getName)
-                    .collect(toImmutableList());
+            List<String> dataColumnNames = dataColumnNamesBuilder.build();
+            List<Type> parquetTypes = parquetTypesBuilder.build();
             ParquetSchemaConverter schemaConverter = new ParquetSchemaConverter(
                     parquetTypes,
                     dataColumnNames,

@@ -14,6 +14,7 @@
 package io.trino.plugin.deltalake;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -51,7 +52,6 @@ import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeParquetStatisticsUtils.hasInvalidStatistics;
@@ -173,15 +173,19 @@ public class DeltaLakeWriter
     public DataFileInfo getDataFileInfo()
             throws IOException
     {
-        List<String> dataColumnNames = columnHandles.stream().map(DeltaLakeColumnHandle::getName).collect(toImmutableList());
-        List<Type> dataColumnTypes = columnHandles.stream().map(DeltaLakeColumnHandle::getType).collect(toImmutableList());
+        ImmutableList.Builder<String> dataColumnNames = ImmutableList.builderWithExpectedSize(columnHandles.size());
+        ImmutableList.Builder<Type> dataColumnTypes = ImmutableList.builderWithExpectedSize(columnHandles.size());
+        for (DeltaLakeColumnHandle column : columnHandles) {
+            dataColumnNames.add(column.getName());
+            dataColumnTypes.add(column.getPhysicalType());
+        }
         return new DataFileInfo(
                 relativeFilePath,
                 getWrittenBytes(),
                 creationTime,
                 dataFileType,
                 partitionValues,
-                readStatistics(fileSystem, rootTableLocation, dataColumnNames, dataColumnTypes, relativeFilePath, rowCount));
+                readStatistics(fileSystem, rootTableLocation, dataColumnNames.build(), dataColumnTypes.build(), relativeFilePath, rowCount));
     }
 
     private static DeltaLakeJsonFileStatistics readStatistics(
