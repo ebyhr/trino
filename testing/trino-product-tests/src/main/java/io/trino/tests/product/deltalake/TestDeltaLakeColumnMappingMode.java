@@ -21,6 +21,7 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
+import static com.google.common.collect.Lists.cartesianProduct;
 import static io.trino.tempto.assertions.QueryAssert.Row.row;
 import static io.trino.tempto.assertions.QueryAssert.assertQueryFailure;
 import static io.trino.tempto.assertions.QueryAssert.assertThat;
@@ -325,7 +326,7 @@ public class TestDeltaLakeColumnMappingMode
 
     @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_OSS, DELTA_LAKE_EXCLUDE_73, DELTA_LAKE_EXCLUDE_91, PROFILE_SPECIFIC_TESTS}, dataProvider = "columnMappingDataProvider")
     @Flaky(issue = DATABRICKS_COMMUNICATION_FAILURE_ISSUE, match = DATABRICKS_COMMUNICATION_FAILURE_MATCH)
-    public void testUnsupportedOperationsColumnMappingModeName(String mode)
+    public void testUnsupportedOperationsColumnMappingMode(String mode)
     {
         String tableName = "test_dl_unsupported_column_mapping_mode_" + randomNameSuffix();
 
@@ -340,19 +341,29 @@ public class TestDeltaLakeColumnMappingMode
                 " 'delta.minWriterVersion'='5')");
 
         try {
-            assertQueryFailure(() -> onTrino().executeQuery("INSERT INTO default." + tableName + " VALUES (1, 'one'), (2, 'two')"))
+            if (!mode.equals("id")) {
+                assertThat(onTrino().executeQuery("INSERT INTO delta.default." + tableName + " VALUES (1, 'one'), (2, 'two')"))
+                        .updatedRowsCountIsEqualTo(2);
+                assertThat(onTrino().executeQuery("DELETE FROM delta.default." + tableName))
+                        .updatedRowsCountIsEqualTo(2);
+                assertThat(onTrino().executeQuery("UPDATE delta.default." + tableName + " SET a_string = 'test'"))
+                        .updatedRowsCountIsEqualTo(0);
+            }
+            else {
+                assertQueryFailure(() -> onTrino().executeQuery("INSERT INTO delta.default." + tableName + " VALUES (1, 'one'), (2, 'two')"))
+                        .hasMessageContaining("Writing with column mapping id is not supported");
+                assertQueryFailure(() -> onTrino().executeQuery("DELETE FROM delta.default." + tableName))
+                        .hasMessageContaining("Writing with column mapping id is not supported");
+                assertQueryFailure(() -> onTrino().executeQuery("UPDATE delta.default." + tableName + " SET a_string = 'test'"))
+                        .hasMessageContaining("Writing with column mapping id is not supported");
+            }
+            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE delta.default." + tableName + " EXECUTE OPTIMIZE"))
                     .hasMessageContaining("Delta Lake writer version 5 which is not supported");
-            assertQueryFailure(() -> onTrino().executeQuery("DELETE FROM default." + tableName))
+            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE delta.default." + tableName + " ADD COLUMN new_col varchar"))
                     .hasMessageContaining("Delta Lake writer version 5 which is not supported");
-            assertQueryFailure(() -> onTrino().executeQuery("UPDATE default." + tableName + " SET a_string = 'test'"))
-                    .hasMessageContaining("Delta Lake writer version 5 which is not supported");
-            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE default." + tableName + " EXECUTE OPTIMIZE"))
-                    .hasMessageContaining("Delta Lake writer version 5 which is not supported");
-            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE default." + tableName + " ADD COLUMN new_col varchar"))
-                    .hasMessageContaining("Delta Lake writer version 5 which is not supported");
-            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE default." + tableName + " RENAME COLUMN a_number TO renamed_column"))
+            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE delta.default." + tableName + " RENAME COLUMN a_number TO renamed_column"))
                     .hasMessageContaining("This connector does not support renaming columns");
-            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE default." + tableName + " DROP COLUMN a_number"))
+            assertQueryFailure(() -> onTrino().executeQuery("ALTER TABLE delta.default." + tableName + " DROP COLUMN a_number"))
                     .hasMessageContaining("This connector does not support dropping columns");
         }
         finally {
@@ -398,5 +409,256 @@ public class TestDeltaLakeColumnMappingMode
                 {"id"},
                 {"name"},
         };
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_OSS, DELTA_LAKE_EXCLUDE_73, DELTA_LAKE_EXCLUDE_91, PROFILE_SPECIFIC_TESTS}, dataProvider = "columnMappingWithTrueAndFalseDataProvider")
+    @Flaky(issue = DATABRICKS_COMMUNICATION_FAILURE_ISSUE, match = DATABRICKS_COMMUNICATION_FAILURE_MATCH)
+    public void testSupportedNonPartitionedColumnMappingWrites(String columnMappingMode, boolean statsAsJsonEnabled)
+    {
+        String tableName = "test_dl_dml_column_mapping_mode_" + columnMappingMode + randomNameSuffix();
+
+        onDelta().executeQuery("" +
+                "CREATE TABLE default." + tableName +
+                " (a_number INT, a_string STRING, array_col ARRAY<STRUCT<array_struct_element: STRING>>, nested STRUCT<field1: STRING>)" +
+                " USING delta " +
+                " LOCATION 's3://" + bucketName + "/databricks-compatibility-test-" + tableName + "'" +
+                " TBLPROPERTIES (" +
+                " delta.checkpointInterval = 1, " +
+                " delta.checkpoint.writeStatsAsJson = " + statsAsJsonEnabled + ", " +
+                " delta.checkpoint.writeStatsAsStruct = " + !statsAsJsonEnabled + ", " +
+                " delta.columnMapping.mode='" + columnMappingMode + "')");
+
+        try {
+            String queryTrino = "a_number, a_string, array_col[1].array_struct_element, nested.field1";
+            String queryDelta = "a_number, a_string, array_col[0].array_struct_element, nested.field1";
+
+            onTrino().executeQuery("INSERT INTO delta.default." + tableName +
+                    " VALUES (1, 'first value', ARRAY[ROW('nested 1')], ROW('databricks 1'))," +
+                    "        (2, 'two', ARRAY[ROW('nested 2')], ROW('databricks 2'))," +
+                    "        (3, 'third value', ARRAY[ROW('nested 3')], ROW('databricks 3'))," +
+                    "        (4, 'four', ARRAY[ROW('nested 4')], ROW('databricks 4'))");
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(1, "first value", "nested 1", "databricks 1"),
+                    row(2, "two", "nested 2", "databricks 2"),
+                    row(3, "third value", "nested 3", "databricks 3"),
+                    row(4, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 4.0, 0.0, null, "1", "4"),
+                            row("a_string", 29.0, 4.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 4.0, null, null)));
+
+            onTrino().executeQuery("UPDATE delta.default." + tableName + " SET a_number = a_number + 10 WHERE a_number in (3, 4)");
+            onDelta().executeQuery("UPDATE default." + tableName + " SET a_number = a_number + 20 WHERE a_number in (1, 2)");
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(21, "first value", "nested 1", "databricks 1"),
+                    row(22, "two", "nested 2", "databricks 2"),
+                    row(13, "third value", "nested 3", "databricks 3"),
+                    row(14, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 4.0, 0.0, null, "13", "22"),
+                            row("a_string", 29.0, 4.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 4.0, null, null)));
+
+            onTrino().executeQuery("DELETE FROM delta.default." + tableName + " WHERE a_number = 22");
+            onTrino().executeQuery("DELETE FROM delta.default." + tableName + " WHERE a_number = 13");
+            onDelta().executeQuery("DELETE FROM default." + tableName + " WHERE a_number = 21");
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(14, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 1.0, 0.0, null, "14", "14"),
+                            row("a_string", 29.0, 1.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 1.0, null, null)));
+        }
+        finally {
+            onDelta().executeQuery("DROP TABLE default." + tableName);
+        }
+    }
+
+    private void assertDeltaTrinoTableEquals(String tableName, String queryTrino, String queryDelta, List<Row> expectedRows)
+    {
+        assertThat(onDelta().executeQuery("SELECT " + queryDelta + " FROM default." + tableName))
+                .containsOnly(expectedRows);
+        assertThat(onTrino().executeQuery("SELECT " + queryTrino + " FROM delta.default." + tableName))
+                .containsOnly(expectedRows);
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_OSS, DELTA_LAKE_EXCLUDE_73, DELTA_LAKE_EXCLUDE_91, PROFILE_SPECIFIC_TESTS}, dataProvider = "columnMappingWithTrueAndFalseDataProvider")
+    @Flaky(issue = DATABRICKS_COMMUNICATION_FAILURE_ISSUE, match = DATABRICKS_COMMUNICATION_FAILURE_MATCH)
+    public void testSupportedPartitionedColumnMappingWrites(String columnMappingMode, boolean statsAsJsonEnabled)
+    {
+        String tableName = "test_dl_dml_column_mapping_mode_" + columnMappingMode + randomNameSuffix();
+
+        onDelta().executeQuery("" +
+                "CREATE TABLE default." + tableName +
+                " (a_number INT, a_string STRING, array_col ARRAY<STRUCT<array_struct_element: STRING>>, nested STRUCT<field1: STRING>)" +
+                " USING delta " +
+                " PARTITIONED BY (a_string)" +
+                " LOCATION 's3://" + bucketName + "/databricks-compatibility-test-" + tableName + "'" +
+                " TBLPROPERTIES (" +
+                " delta.checkpointInterval = 1, " +
+                " delta.checkpoint.writeStatsAsJson = " + statsAsJsonEnabled + ", " +
+                " delta.checkpoint.writeStatsAsStruct = " + !statsAsJsonEnabled + ", " +
+                " delta.columnMapping.mode ='" + columnMappingMode + "')");
+
+        try {
+            String queryTrino = "a_number, a_string, array_col[1].array_struct_element, nested.field1";
+            String queryDelta = "a_number, a_string, array_col[0].array_struct_element, nested.field1";
+
+            onTrino().executeQuery("INSERT INTO delta.default." + tableName +
+                    " VALUES (1, 'first value', ARRAY[ROW('nested 1')], ROW('databricks 1'))," +
+                    "        (2, 'two', ARRAY[ROW('nested 2')], ROW('databricks 2'))," +
+                    "        (3, 'third value', ARRAY[ROW('nested 3')], ROW('databricks 3'))," +
+                    "        (4, 'four', ARRAY[ROW('nested 4')], ROW('databricks 4'))");
+
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(1, "first value", "nested 1", "databricks 1"),
+                    row(2, "two", "nested 2", "databricks 2"),
+                    row(3, "third value", "nested 3", "databricks 3"),
+                    row(4, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 4.0, 0.0, null, "1", "4"),
+                            row("a_string", null, 4.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 4.0, null, null)));
+
+            onTrino().executeQuery("UPDATE delta.default." + tableName + " SET a_number = a_number + 10 WHERE a_number in (3, 4)");
+            onDelta().executeQuery("UPDATE default." + tableName + " SET a_number = a_number + 20 WHERE a_number in (1, 2)");
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(21, "first value", "nested 1", "databricks 1"),
+                    row(22, "two", "nested 2", "databricks 2"),
+                    row(13, "third value", "nested 3", "databricks 3"),
+                    row(14, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 4.0, 0.0, null, "13", "22"),
+                            row("a_string", null, 4.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 4.0, null, null)));
+
+            onTrino().executeQuery("DELETE FROM delta.default." + tableName + " WHERE a_number = 22");
+            onTrino().executeQuery("DELETE FROM delta.default." + tableName + " WHERE a_number = 13");
+            onDelta().executeQuery("DELETE FROM default." + tableName + " WHERE a_number = 21");
+            assertDeltaTrinoTableEquals(tableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(14, "four", "nested 4", "databricks 4")));
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 1.0, 0.0, null, "14", "14"),
+                            row("a_string", null, 1.0, 0.0, null, null, null),
+                            row("array_col", null, null, null, null, null, null),
+                            row("nested", null, null, null, null, null, null),
+                            row(null, null, null, null, 1.0, null, null)));
+        }
+        finally {
+            onDelta().executeQuery("DROP TABLE default." + tableName);
+        }
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_OSS, DELTA_LAKE_EXCLUDE_73, DELTA_LAKE_EXCLUDE_91, PROFILE_SPECIFIC_TESTS}, dataProvider = "supportedMergeColumnMappingConfigDataProvider")
+    @Flaky(issue = DATABRICKS_COMMUNICATION_FAILURE_ISSUE, match = DATABRICKS_COMMUNICATION_FAILURE_MATCH)
+    public void testMergeDeleteWithColumnMapping(String columnMappingMode)
+    {
+        String sourceTableName = "test_dl_dml_src_column_mapping_mode_" + columnMappingMode + randomNameSuffix();
+        String targetTableName = "test_dl_dml_trg_column_mapping_mode_" + columnMappingMode + randomNameSuffix();
+
+        onDelta().executeQuery("" +
+                "CREATE TABLE default." + sourceTableName +
+                " (a_number INT, a_string STRING, array_col ARRAY<STRUCT<array_struct_element: STRING>>, nested STRUCT<field1: STRING>)" +
+                " USING delta " +
+                " PARTITIONED BY (a_string)" +
+                " LOCATION 's3://" + bucketName + "/databricks-compatibility-test-" + sourceTableName + "'" +
+                " TBLPROPERTIES (" +
+                " delta.columnMapping.mode ='" + columnMappingMode + "')");
+
+        onDelta().executeQuery("" +
+                "CREATE TABLE default." + targetTableName +
+                " (a_number INT, a_string STRING, array_col ARRAY<STRUCT<array_struct_element: STRING>>, nested STRUCT<field1: STRING>)" +
+                " USING delta " +
+                " PARTITIONED BY (a_string)" +
+                " LOCATION 's3://" + bucketName + "/databricks-compatibility-test-" + targetTableName + "'" +
+                " TBLPROPERTIES (" +
+                " delta.columnMapping.mode ='" + columnMappingMode + "')");
+        try {
+            onTrino().executeQuery("INSERT INTO delta.default." + sourceTableName +
+                    " VALUES (1, 'first value', ARRAY[ROW('nested 1')], ROW('databricks 1'))," +
+                    "        (2, 'two', ARRAY[ROW('nested 2')], ROW('databricks 2'))," +
+                    "        (3, 'third value', ARRAY[ROW('nested 3')], ROW('databricks 3'))," +
+                    "        (4, 'four', ARRAY[ROW('nested 4')], ROW('databricks 4'))");
+
+            String queryTrino = "a_number, a_string, array_col[1].array_struct_element, nested.field1";
+            String queryDelta = "a_number, a_string, array_col[0].array_struct_element, nested.field1";
+            assertDeltaTrinoTableEquals(sourceTableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(1, "first value", "nested 1", "databricks 1"),
+                    row(2, "two", "nested 2", "databricks 2"),
+                    row(3, "third value", "nested 3", "databricks 3"),
+                    row(4, "four", "nested 4", "databricks 4")));
+
+            onTrino().executeQuery("INSERT INTO delta.default." + targetTableName +
+                    " VALUES (1000, '1000 value', ARRAY[ROW('nested 1000')], ROW('databricks 1000'))," +
+                    "        (2, 'two', ARRAY[ROW('nested 2')], ROW('databricks 2'))");
+            onDelta().executeQuery("INSERT INTO default." + targetTableName +
+                    " VALUES (3000, '3000 value', array(struct('nested 3000')), struct('databricks 3000'))," +
+                    "        (4, 'four', array(struct('nested 4')), struct('databricks 4'))");
+
+            assertDeltaTrinoTableEquals(targetTableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(1000, "1000 value", "nested 1000", "databricks 1000"),
+                    row(2, "two", "nested 2", "databricks 2"),
+                    row(3000, "3000 value", "nested 3000", "databricks 3000"),
+                    row(4, "four", "nested 4", "databricks 4")));
+
+            onTrino().executeQuery("MERGE INTO delta.default." + targetTableName + " t USING delta.default." + sourceTableName + " s " +
+                    "ON (t.a_number = s.a_number) " +
+                    "WHEN MATCHED " +
+                    " THEN DELETE " +
+                    "WHEN NOT MATCHED " +
+                    " THEN INSERT (a_number, a_string, array_col, nested) VALUES (s.a_number, s.a_string, s.array_col, s.nested)");
+
+            assertDeltaTrinoTableEquals(targetTableName, queryTrino, queryDelta, ImmutableList.of(
+                    row(1000, "1000 value", "nested 1000", "databricks 1000"),
+                    row(3000, "3000 value", "nested 3000", "databricks 3000"),
+                    row(1, "first value", "nested 1", "databricks 1"),
+                    row(3, "third value", "nested 3", "databricks 3")));
+        }
+        finally {
+            onDelta().executeQuery("DROP TABLE default." + sourceTableName);
+            onDelta().executeQuery("DROP TABLE default." + targetTableName);
+        }
+    }
+
+    @DataProvider
+    public Object[][] supportedMergeColumnMappingConfigDataProvider()
+    {
+        return new Object[][] {
+                {"none"},
+                {"name"},
+        };
+    }
+
+    @DataProvider
+    public Object[][] columnMappingWithTrueAndFalseDataProvider()
+    {
+        return cartesianProduct(
+                ImmutableList.of("none", "name"),
+                ImmutableList.of(true, false))
+                .stream()
+                .map(List::toArray)
+                .toArray(Object[][]::new);
     }
 }

@@ -176,7 +176,7 @@ public class DeltaLakeWriter
         ImmutableList.Builder<String> dataColumnNames = ImmutableList.builderWithExpectedSize(columnHandles.size());
         ImmutableList.Builder<Type> dataColumnTypes = ImmutableList.builderWithExpectedSize(columnHandles.size());
         for (DeltaLakeColumnHandle column : columnHandles) {
-            dataColumnNames.add(column.getName());
+            dataColumnNames.add(column.getPhysicalName());
             dataColumnTypes.add(column.getPhysicalType());
         }
         return new DataFileInfo(

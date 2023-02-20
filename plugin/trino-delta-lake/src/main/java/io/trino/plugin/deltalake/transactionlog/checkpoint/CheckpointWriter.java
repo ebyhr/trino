@@ -247,7 +247,7 @@ public class CheckpointWriter
     private Map<String, Type> getColumnTypeMapping(MetadataEntry deltaMetadata)
     {
         return extractSchema(deltaMetadata, typeManager).stream()
-                .collect(toImmutableMap(DeltaLakeColumnMetadata::getName, DeltaLakeColumnMetadata::getType));
+                .collect(toImmutableMap(DeltaLakeColumnMetadata::getPhysicalName, DeltaLakeColumnMetadata::getType));
     }
 
     private Optional<String> getStatsString(DeltaLakeJsonFileStatistics parsedStats)
