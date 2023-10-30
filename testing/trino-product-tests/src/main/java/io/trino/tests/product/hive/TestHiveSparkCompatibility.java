@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import io.trino.tempto.ProductTest;
 import io.trino.tempto.hadoop.hdfs.HdfsClient;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -609,17 +610,24 @@ public class TestHiveSparkCompatibility
 
         onSpark().executeQuery(format("CREATE TABLE default.%s (value integer) PARTITIONED BY (dt date)", sparkTableName));
 
-        // Spark allows creating partition with invalid date format
+        // The old Spark allowed creating partition with invalid date format
         // Hive denies creating such partitions, but allows reading
-        onSpark().executeQuery(format("INSERT INTO %s PARTITION(dt='%s') VALUES (1)", sparkTableName, inputDate));
+        if (inputDate.equals("2021-02-30") || inputDate.equals("invalid date")) {
+            assertQueryFailure(() -> onSpark().executeQuery(format("INSERT INTO %s PARTITION(dt='%s') VALUES (1)", sparkTableName, inputDate)))
+                    .hasMessageContaining("cannot be cast to \"DATE\" because it is malformed");
+            onSpark().executeQuery("DROP TABLE " + sparkTableName);
+            throw new SkipException("TODO");
+        }
+        else {
+            // Spark removes the following string after the date, e.g. 23:59:59 and invalid
+            onSpark().executeQuery(format("INSERT INTO %s PARTITION(dt='%s') VALUES (1)", sparkTableName, inputDate));
+        }
 
-        // Hive ignores time unit, and return null for invalid dates
+        Row expected = row(1, outputDate);
         assertThat(onHive().executeQuery("SELECT value, dt FROM " + sparkTableName))
-                .containsOnly(List.of(row(1, outputDate)));
-
-        // Trino throws an exception if the date is invalid format or not a whole round date
-        assertQueryFailure(() -> onTrino().executeQuery("SELECT value, dt FROM " + trinoTableName))
-                .hasMessageContaining("Invalid partition value");
+                .containsOnly(expected);
+        assertThat(onTrino().executeQuery("SELECT value, dt FROM " + trinoTableName))
+                .containsOnly(expected);
 
         onTrino().executeQuery("DROP TABLE " + trinoTableName);
     }
