@@ -24,6 +24,8 @@ import io.trino.filesystem.TrinoFileSystemFactory;
 import io.trino.filesystem.TrinoInputFile;
 import io.trino.parquet.ParquetReaderOptions;
 import io.trino.parquet.writer.ParquetWriterOptions;
+import io.trino.plugin.deltalake.transactionlog.DeletionVectorEntry;
+import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeJsonFileStatistics;
 import io.trino.plugin.hive.FileFormatDataSourceStats;
 import io.trino.plugin.hive.ReaderPageSource;
 import io.trino.plugin.hive.parquet.ParquetFileWriter;
@@ -72,6 +74,7 @@ import static io.trino.plugin.deltalake.DeltaLakeSessionProperties.getParquetWri
 import static io.trino.plugin.deltalake.DeltaLakeSessionProperties.getParquetWriterPageSize;
 import static io.trino.plugin.deltalake.DeltaLakeSessionProperties.getParquetWriterPageValueCount;
 import static io.trino.plugin.deltalake.DeltaLakeTypes.toParquetType;
+import static io.trino.plugin.deltalake.delete.DeletionVectors.writeDeletionVectors;
 import static io.trino.plugin.deltalake.transactionlog.TransactionLogParser.deserializePartitionValue;
 import static io.trino.spi.block.RowBlock.getRowFieldsFromBlock;
 import static io.trino.spi.predicate.Utils.nativeValueToBlock;
@@ -109,6 +112,7 @@ public class DeltaLakeMergeSink
     private final int domainCompactionThreshold;
     private final Supplier<DeltaLakeCdfPageSink> cdfPageSinkSupplier;
     private final boolean cdfEnabled;
+    private final boolean deletionVectorEnabled;
     private final Map<Slice, FileDeletion> fileDeletions = new HashMap<>();
     private final int[] dataColumnsIndices;
     private final int[] dataAndRowIdColumnsIndices;
@@ -132,6 +136,7 @@ public class DeltaLakeMergeSink
             int domainCompactionThreshold,
             Supplier<DeltaLakeCdfPageSink> cdfPageSinkSupplier,
             boolean cdfEnabled,
+            boolean deletionVectorEnabled,
             DeltaLakeParquetSchemaMapping parquetSchemaMapping)
     {
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
@@ -155,6 +160,7 @@ public class DeltaLakeMergeSink
                 .collect(toImmutableList());
         this.cdfPageSinkSupplier = requireNonNull(cdfPageSinkSupplier);
         this.cdfEnabled = cdfEnabled;
+        this.deletionVectorEnabled = deletionVectorEnabled;
         this.parquetSchemaMapping = requireNonNull(parquetSchemaMapping, "parquetSchemaMapping is null");
         dataColumnsIndices = new int[tableColumnCount];
         dataAndRowIdColumnsIndices = new int[tableColumnCount + 1];
@@ -308,8 +314,14 @@ public class DeltaLakeMergeSink
                 .map(Slices::wrappedBuffer)
                 .forEach(fragments::add);
 
-        fileDeletions.forEach((path, deletion) ->
-                fragments.addAll(rewriteFile(path.toStringUtf8(), deletion)));
+        fileDeletions.forEach((path, deletion) -> {
+            if (deletionVectorEnabled) {
+                fragments.addAll(writeDeletionVector(path.toStringUtf8(), deletion));
+            }
+            else {
+                fragments.addAll(rewriteFile(path.toStringUtf8(), deletion));
+            }
+        });
 
         if (cdfEnabled && cdfPageSink != null) { // cdf may be enabled but there may be no update/deletion so sink was not instantiated
             MoreFutures.getDone(cdfPageSink.finish()).stream()
@@ -322,6 +334,32 @@ public class DeltaLakeMergeSink
         }
 
         return completedFuture(fragments);
+    }
+
+    private List<Slice> writeDeletionVector(String sourcePath, FileDeletion deletion)
+    {
+        String tablePath = rootTableLocation.toString();
+        Location sourceLocation = Location.of(sourcePath);
+        String sourceRelativePath = relativePath(tablePath, sourcePath);
+
+        // TODO size and etc should be Parquet file's metadata, not deletion vector's
+        try {
+            DeletionVectorEntry deletionVectorEntry = writeDeletionVectors(fileSystem, rootTableLocation, deletion.rowsDeletedByDelete, deletion.rowsDeletedByUpdate);
+            TrinoInputFile inputFile = fileSystem.newInputFile(sourceLocation);
+            DataFileInfo newFileInfo = new DataFileInfo(
+                    sourceRelativePath,
+                    inputFile.length(),
+                    inputFile.lastModified().toEpochMilli(),
+                    DATA,
+                    ImmutableList.of(),
+                    new DeltaLakeJsonFileStatistics(Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()),
+                    Optional.of(deletionVectorEntry));
+            DeltaLakeMergeResult result = new DeltaLakeMergeResult(Optional.of(sourceRelativePath), Optional.of(newFileInfo));
+            return ImmutableList.of(utf8Slice(mergeResultJsonCodec.toJson(result)));
+        }
+        catch (IOException e) {
+            throw new TrinoException(DELTA_LAKE_BAD_WRITE, "Unable to rewrite deletion vector file", e);
+        }
     }
 
     // In spite of the name "Delta" Lake, we must rewrite the entire file to delete rows.

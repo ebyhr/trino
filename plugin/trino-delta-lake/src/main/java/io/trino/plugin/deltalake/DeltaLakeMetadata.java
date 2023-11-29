@@ -1893,7 +1893,7 @@ public class DeltaLakeMetadata
                             Optional.of(serializeStatsAsJson(statisticsWithExactNames)),
                             Optional.empty(),
                             ImmutableMap.of(),
-                            Optional.empty()));
+                            info.getDeletionVector()));
         }
     }
 

@@ -15,8 +15,11 @@ package io.trino.plugin.deltalake.transactionlog;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.Weigher;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.Inject;
@@ -429,7 +432,7 @@ public class TransactionLogAccess
 
     private Stream<AddFileEntry> activeAddEntries(Stream<DeltaLakeTransactionLogEntry> checkpointEntries, List<Transaction> transactions)
     {
-        Map<String, AddFileEntry> activeJsonEntries = new LinkedHashMap<>();
+        Multimap<String, AddFileEntry> activeJsonEntries = ArrayListMultimap.create();
         HashSet<String> removedFiles = new HashSet<>();
 
         // The json entries containing the last few entries in the log need to be applied on top of the parquet snapshot:
@@ -438,9 +441,13 @@ public class TransactionLogAccess
         transactions.forEach(transaction -> {
             Map<String, AddFileEntry> addFilesInTransaction = new LinkedHashMap<>();
             Set<String> removedFilesInTransaction = new HashSet<>();
+            Set<String> keep = new HashSet<>();
             transaction.transactionEntries().forEach(deltaLakeTransactionLogEntry -> {
                 if (deltaLakeTransactionLogEntry.getAdd() != null) {
                     addFilesInTransaction.put(deltaLakeTransactionLogEntry.getAdd().getPath(), deltaLakeTransactionLogEntry.getAdd());
+                    if (deltaLakeTransactionLogEntry.getAdd().getDeletionVector().isPresent()) {
+                        keep.add(deltaLakeTransactionLogEntry.getAdd().getPath());
+                    }
                 }
                 else if (deltaLakeTransactionLogEntry.getRemove() != null) {
                     removedFilesInTransaction.add(deltaLakeTransactionLogEntry.getRemove().path());
@@ -448,9 +455,10 @@ public class TransactionLogAccess
             });
 
             // Process 'remove' entries first because deletion vectors register both 'add' and 'remove' entries and the 'add' entry should be kept
-            removedFiles.addAll(removedFilesInTransaction);
-            removedFilesInTransaction.forEach(activeJsonEntries::remove);
-            activeJsonEntries.putAll(addFilesInTransaction);
+            Set<String> removedFilesInTransaction2 = Sets.difference(removedFilesInTransaction, keep);
+            removedFiles.addAll(removedFilesInTransaction2);
+            removedFilesInTransaction2.forEach(activeJsonEntries::removeAll);
+            addFilesInTransaction.forEach(activeJsonEntries::put);
         });
 
         Stream<AddFileEntry> filteredCheckpointEntries = checkpointEntries
@@ -458,7 +466,7 @@ public class TransactionLogAccess
                 .filter(Objects::nonNull)
                 .filter(addEntry -> !removedFiles.contains(addEntry.getPath()) && !activeJsonEntries.containsKey(addEntry.getPath()));
 
-        return Stream.concat(filteredCheckpointEntries, activeJsonEntries.values().stream());
+        return Stream.concat(filteredCheckpointEntries, activeJsonEntries.asMap().values().stream().flatMap(Collection::stream));
     }
 
     public Stream<RemoveFileEntry> getRemoveEntries(ConnectorSession session, TableSnapshot tableSnapshot)

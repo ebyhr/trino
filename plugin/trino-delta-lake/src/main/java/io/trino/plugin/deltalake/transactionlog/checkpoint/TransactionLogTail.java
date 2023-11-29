@@ -74,7 +74,7 @@ public class TransactionLogTail
 
         boolean endOfTail = false;
         while (!endOfTail) {
-            results = getEntriesFromJson(entryNumber, transactionLogDir, fileSystem);
+            results = getEntriesFromJson(entryNumber, transactionLogDir, fileSystem); // 4
             if (results.isPresent()) {
                 entriesBuilder.add(new Transaction(entryNumber, results.get()));
                 version = entryNumber;
@@ -92,7 +92,7 @@ public class TransactionLogTail
             }
         }
 
-        return new TransactionLogTail(entriesBuilder.build(), version);
+        return new TransactionLogTail(entriesBuilder.build(), version); // before/after UPDATe
     }
 
     public Optional<TransactionLogTail> getUpdatedTail(TrinoFileSystem fileSystem, String tableLocation, Optional<Long> endVersion)

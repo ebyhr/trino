@@ -20,11 +20,14 @@ import io.trino.filesystem.TrinoInputFile;
 import io.trino.plugin.deltalake.transactionlog.DeletionVectorEntry;
 import io.trino.spi.TrinoException;
 import org.roaringbitmap.RoaringBitmap;
+import org.roaringbitmap.longlong.LongBitmapDataProvider;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -33,6 +36,7 @@ import static io.trino.plugin.deltalake.DeltaLakeErrorCode.DELTA_LAKE_INVALID_SC
 import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;
 import static java.lang.Math.toIntExact;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
+import static java.util.UUID.randomUUID;
 
 // https://github.com/delta-io/delta/blob/master/PROTOCOL.md#deletion-vector-format
 public final class DeletionVectors
@@ -63,6 +67,43 @@ public final class DeletionVectors
             throw new TrinoException(NOT_SUPPORTED, "Unsupported storage type for deletion vector: " + deletionVector.storageType());
         }
         throw new IllegalArgumentException("Unexpected storage type: " + deletionVector.storageType());
+    }
+
+    public static DeletionVectorEntry writeDeletionVectors(TrinoFileSystem fileSystem, Location location, LongBitmapDataProvider rowsDeletedByDelete, LongBitmapDataProvider rowsDeletedByUpdate)
+            throws IOException
+    {
+        UUID uuid = randomUUID();
+        String deletionVectorFilename = "deletion_vector_" + uuid + ".bin";
+        String pathOrInlineDv = encodeUuid(uuid);
+        OptionalInt offset = OptionalInt.of(0);
+        int sizeInBytes = rowsDeletedByDelete.getSizeInBytes() + rowsDeletedByUpdate.getSizeInBytes();
+        long cardinality = toIntExact(rowsDeletedByDelete.getLongCardinality() + rowsDeletedByUpdate.getLongCardinality());
+
+        ByteBuffer buffer = ByteBuffer.allocate(sizeInBytes + 4 + 8 + 4).order(LITTLE_ENDIAN);
+        buffer.putInt(PORTABLE_ROARING_BITMAP_MAGIC_NUMBER);
+        buffer.putLong(cardinality);
+        buffer.putInt(1); // key
+
+        if (rowsDeletedByDelete.getLongCardinality() > 0) {
+            toRoaringBitmap(rowsDeletedByDelete).serialize(buffer);
+        }
+        if (rowsDeletedByUpdate.getLongCardinality() > 0) {
+            toRoaringBitmap(rowsDeletedByUpdate).serialize(buffer);
+        }
+
+        try (DataOutputStream output = new DataOutputStream(fileSystem.newOutputFile(location.appendPath(deletionVectorFilename)).createOrOverwrite())) {
+            output.writeInt(sizeInBytes);
+            output.write(buffer.array());
+        }
+
+        return new DeletionVectorEntry(UUID_MARKER, pathOrInlineDv, offset, sizeInBytes, cardinality);
+    }
+
+    private static RoaringBitmap toRoaringBitmap(LongBitmapDataProvider bitmap)
+    {
+        RoaringBitmap roaringBitmap = new RoaringBitmap();
+        bitmap.stream().forEach(position -> roaringBitmap.add(toIntExact(position)));
+        return roaringBitmap;
     }
 
     public static String toFileName(String pathOrInlineDv)
@@ -115,6 +156,15 @@ public final class DeletionVectors
             return bitmaps;
         }
         throw new IllegalArgumentException("Unsupported magic number: " + magicNumber);
+    }
+
+    public static String encodeUuid(UUID uuid)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.putLong(uuid.getMostSignificantBits());
+        buffer.putLong(uuid.getLeastSignificantBits());
+        buffer.rewind();
+        return Base85Codec.encode(buffer);
     }
 
     public static UUID decodeUuid(String encoded)

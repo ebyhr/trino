@@ -17,10 +17,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.math.IntMath;
 import com.google.common.primitives.SignedBytes;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 // This implements Base85 using the 4 byte block aligned encoding and character set from Z85 https://rfc.zeromq.org/spec/32
@@ -58,6 +60,35 @@ public final class Base85Codec
     }
 
     private Base85Codec() {}
+
+    public static String encode(ByteBuffer buffer)
+    {
+        return encodeBlocks(buffer);
+    }
+
+    private static String encodeBlocks(ByteBuffer buffer) {
+        checkArgument(buffer.remaining() % 4 == 0);
+        int numBlocks = buffer.remaining() / 4;
+        // Every 4 byte block gets encoded into 5 bytes/chars
+        int outputLength = numBlocks * 5;
+        byte[] output = new byte[outputLength];
+        int outputIndex = 0;
+
+        while (buffer.hasRemaining()) {
+            long sum = buffer.getInt() & 0x00000000ffffffffL;
+            output[outputIndex] = ENCODE_MAP[(int) (sum / BASE_4TH_POWER)];
+            sum %= BASE_4TH_POWER;
+            output[outputIndex + 1] = ENCODE_MAP[(int) (sum / BASE_3RD_POWER)];
+            sum %= BASE_3RD_POWER;
+            output[outputIndex + 2] = ENCODE_MAP[(int) (sum / BASE_2ND_POWER)];
+            sum %= BASE_2ND_POWER;
+            output[outputIndex + 3] = ENCODE_MAP[(int) (sum / BASE)];
+            output[outputIndex + 4] = ENCODE_MAP[(int) (sum % BASE)];
+            outputIndex += 5;
+        }
+
+        return new String(output, US_ASCII);
+    }
 
     public static byte[] decode(String encoded)
     {

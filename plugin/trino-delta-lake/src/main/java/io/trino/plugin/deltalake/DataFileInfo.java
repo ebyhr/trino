@@ -15,9 +15,11 @@ package io.trino.plugin.deltalake;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.trino.plugin.deltalake.transactionlog.DeletionVectorEntry;
 import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeJsonFileStatistics;
 
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -35,6 +37,7 @@ public class DataFileInfo
     private final DataFileType dataFileType;
     private final long creationTime;
     private final DeltaLakeJsonFileStatistics statistics;
+    private final Optional<DeletionVectorEntry> deletionVector;
 
     @JsonCreator
     public DataFileInfo(
@@ -43,7 +46,8 @@ public class DataFileInfo
             @JsonProperty("creationTime") long creationTime,
             @JsonProperty("fileType") DataFileType dataFileType,
             @JsonProperty("partitionValues") List<String> partitionValues,
-            @JsonProperty("statistics") DeltaLakeJsonFileStatistics statistics)
+            @JsonProperty("statistics") DeltaLakeJsonFileStatistics statistics,
+            @JsonProperty("deletionVector") Optional<DeletionVectorEntry> deletionVector)
     {
         this.path = path;
         this.size = size;
@@ -51,6 +55,7 @@ public class DataFileInfo
         this.dataFileType = requireNonNull(dataFileType, "dataFileType is null");
         this.partitionValues = partitionValues;
         this.statistics = requireNonNull(statistics, "statistics is null");
+        this.deletionVector = requireNonNull(deletionVector, "deletionVector is null");
     }
 
     @JsonProperty
@@ -87,5 +92,11 @@ public class DataFileInfo
     public DeltaLakeJsonFileStatistics getStatistics()
     {
         return statistics;
+    }
+
+    @JsonProperty
+    public Optional<DeletionVectorEntry> getDeletionVector()
+    {
+        return deletionVector;
     }
 }
