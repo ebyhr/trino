@@ -27,14 +27,18 @@ public class AddColumn
 {
     private final QualifiedName name;
     private final ColumnDefinition column;
+    private final ColumnPosition position;
+    private final Optional<Identifier> after;
     private final boolean tableExists;
     private final boolean columnNotExists;
 
-    public AddColumn(NodeLocation location, QualifiedName name, ColumnDefinition column, boolean tableExists, boolean columnNotExists)
+    public AddColumn(NodeLocation location, QualifiedName name, ColumnDefinition column, ColumnPosition position, Optional<Identifier> after, boolean tableExists, boolean columnNotExists)
     {
         super(Optional.of(location));
         this.name = requireNonNull(name, "name is null");
         this.column = requireNonNull(column, "column is null");
+        this.position = requireNonNull(position, "position is null");
+        this.after = requireNonNull(after, "after is null");
         this.tableExists = tableExists;
         this.columnNotExists = columnNotExists;
     }
@@ -47,6 +51,16 @@ public class AddColumn
     public ColumnDefinition getColumn()
     {
         return column;
+    }
+
+    public ColumnPosition getPosition()
+    {
+        return position;
+    }
+
+    public Optional<Identifier> getAfter()
+    {
+        return after;
     }
 
     public boolean isTableExists()
@@ -68,13 +82,16 @@ public class AddColumn
     @Override
     public List<Node> getChildren()
     {
-        return ImmutableList.of(column);
+        ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+        nodes.add(column);
+        after.ifPresent(nodes::add);
+        return nodes.build();
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(name, column);
+        return Objects.hash(name, column, position, after);
     }
 
     @Override
@@ -88,7 +105,9 @@ public class AddColumn
         }
         AddColumn o = (AddColumn) obj;
         return Objects.equals(name, o.name) &&
-                Objects.equals(column, o.column);
+                Objects.equals(column, o.column) &&
+                position == o.position &&
+                Objects.equals(after, o.after);
     }
 
     @Override
@@ -97,6 +116,8 @@ public class AddColumn
         return toStringHelper(this)
                 .add("name", name)
                 .add("column", column)
+                .add("position", position)
+                .add("after", after)
                 .toString();
     }
 }
