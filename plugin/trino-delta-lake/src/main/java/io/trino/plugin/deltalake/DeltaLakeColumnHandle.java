@@ -189,7 +189,7 @@ public class DeltaLakeColumnHandle
     @JsonIgnore
     public Type getType()
     {
-        return projectionInfo.map(DeltaLakeColumnProjectionInfo::getType)
+        return projectionInfo.map(DeltaLakeColumnProjectionInfo::type)
                 .orElse(baseType);
     }
 
@@ -203,7 +203,7 @@ public class DeltaLakeColumnHandle
     public String toString()
     {
         return getQualifiedPhysicalName() +
-                ":" + projectionInfo.map(DeltaLakeColumnProjectionInfo::getType).orElse(baseType).getDisplayName() +
+                ":" + projectionInfo.map(DeltaLakeColumnProjectionInfo::type).orElse(baseType).getDisplayName() +
                 ":" + columnType;
     }
 

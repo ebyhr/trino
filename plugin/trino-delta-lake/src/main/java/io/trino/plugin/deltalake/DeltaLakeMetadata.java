@@ -1428,7 +1428,7 @@ public class DeltaLakeMetadata
 
             if (isCollectExtendedStatisticsColumnStatisticsOnWrite(session) && !computedStatistics.isEmpty()) {
                 Optional<Instant> maxFileModificationTime = dataFileInfos.stream()
-                        .map(DataFileInfo::getCreationTime)
+                        .map(DataFileInfo::creationTime)
                         .max(Long::compare)
                         .map(Instant::ofEpochMilli);
                 Map<String, String> physicalColumnMapping = DeltaLakeSchemaSupport.getColumnMetadata(schemaString, typeManager, columnMappingMode).stream()
@@ -1873,22 +1873,22 @@ public class DeltaLakeMetadata
             // using Hashmap because partition values can be null
             Map<String, String> partitionValues = new HashMap<>();
             for (int i = 0; i < partitionColumnNames.size(); i++) {
-                partitionValues.put(partitionColumnNames.get(i), info.getPartitionValues().get(i));
+                partitionValues.put(partitionColumnNames.get(i), info.partitionValues().get(i));
             }
 
-            Optional<Map<String, Object>> minStats = toOriginalColumnNames(info.getStatistics().getMinValues(), toOriginalColumnNames);
-            Optional<Map<String, Object>> maxStats = toOriginalColumnNames(info.getStatistics().getMaxValues(), toOriginalColumnNames);
-            Optional<Map<String, Object>> nullStats = toOriginalColumnNames(info.getStatistics().getNullCount(), toOriginalColumnNames);
-            DeltaLakeJsonFileStatistics statisticsWithExactNames = new DeltaLakeJsonFileStatistics(info.getStatistics().getNumRecords(), minStats, maxStats, nullStats);
+            Optional<Map<String, Object>> minStats = toOriginalColumnNames(info.statistics().getMinValues(), toOriginalColumnNames);
+            Optional<Map<String, Object>> maxStats = toOriginalColumnNames(info.statistics().getMaxValues(), toOriginalColumnNames);
+            Optional<Map<String, Object>> nullStats = toOriginalColumnNames(info.statistics().getNullCount(), toOriginalColumnNames);
+            DeltaLakeJsonFileStatistics statisticsWithExactNames = new DeltaLakeJsonFileStatistics(info.statistics().getNumRecords(), minStats, maxStats, nullStats);
 
             partitionValues = unmodifiableMap(partitionValues);
 
             transactionLogWriter.appendAddFileEntry(
                     new AddFileEntry(
-                            toUriFormat(info.getPath()), // Paths are RFC 2396 URI encoded https://github.com/delta-io/delta/blob/master/PROTOCOL.md#add-file-and-remove-file
+                            toUriFormat(info.path()), // Paths are RFC 2396 URI encoded https://github.com/delta-io/delta/blob/master/PROTOCOL.md#add-file-and-remove-file
                             partitionValues,
-                            info.getSize(),
-                            info.getCreationTime(),
+                            info.size(),
+                            info.creationTime(),
                             dataChange,
                             Optional.of(serializeStatsAsJson(statisticsWithExactNames)),
                             Optional.empty(),
@@ -1984,7 +1984,7 @@ public class DeltaLakeMetadata
             if (isCollectExtendedStatisticsColumnStatisticsOnWrite(session) && !computedStatistics.isEmpty() && !dataFileInfos.isEmpty()) {
                 // TODO (https://github.com/trinodb/trino/issues/16088) Add synchronization when version conflict for INSERT is resolved.
                 Optional<Instant> maxFileModificationTime = dataFileInfos.stream()
-                        .map(DataFileInfo::getCreationTime)
+                        .map(DataFileInfo::creationTime)
                         .max(Long::compare)
                         .map(Instant::ofEpochMilli);
                 updateTableStatistics(
@@ -2243,7 +2243,7 @@ public class DeltaLakeMetadata
                 .collect(toImmutableList());
 
         Map<Boolean, List<DataFileInfo>> split = allFiles.stream()
-                .collect(partitioningBy(dataFile -> dataFile.getDataFileType() == DATA));
+                .collect(partitioningBy(dataFile -> dataFile.dataFileType() == DATA));
 
         List<DataFileInfo> newFiles = ImmutableList.copyOf(split.get(true));
         List<DataFileInfo> cdcFiles = ImmutableList.copyOf(split.get(false));
@@ -2336,15 +2336,15 @@ public class DeltaLakeMetadata
             // using Hashmap because partition values can be null
             Map<String, String> partitionValues = new HashMap<>();
             for (int i = 0; i < partitionColumnNames.size(); i++) {
-                partitionValues.put(partitionColumnNames.get(i), info.getPartitionValues().get(i));
+                partitionValues.put(partitionColumnNames.get(i), info.partitionValues().get(i));
             }
             partitionValues = unmodifiableMap(partitionValues);
 
             transactionLogWriter.appendCdcEntry(
                     new CdcEntry(
-                            toUriFormat(info.getPath()),
+                            toUriFormat(info.path()),
                             partitionValues,
-                            info.getSize()));
+                            info.size()));
         }
     }
 
@@ -2678,7 +2678,7 @@ public class DeltaLakeMetadata
     {
         Location location = Location.of(tableLocation);
         List<Location> filesToDelete = dataFiles.stream()
-                .map(DataFileInfo::getPath)
+                .map(DataFileInfo::path)
                 .map(location::appendPath)
                 .collect(toImmutableList());
         try {
@@ -3166,8 +3166,8 @@ public class DeltaLakeMetadata
         ImmutableList.Builder<Integer> dereferenceIndices = ImmutableList.builder();
 
         if (!column.isBaseColumn()) {
-            dereferenceNames.addAll(existingProjectionInfo.orElseThrow().getDereferencePhysicalNames());
-            dereferenceIndices.addAll(existingProjectionInfo.orElseThrow().getDereferenceIndices());
+            dereferenceNames.addAll(existingProjectionInfo.orElseThrow().dereferencePhysicalNames());
+            dereferenceIndices.addAll(existingProjectionInfo.orElseThrow().dereferenceIndices());
         }
 
         Type columnType = switch (columnMappingMode) {
@@ -3219,7 +3219,7 @@ public class DeltaLakeMetadata
         String baseColumnName = variableColumn.getBaseColumnName();
 
         List<Integer> variableColumnIndices = variableColumn.getProjectionInfo()
-                .map(DeltaLakeColumnProjectionInfo::getDereferenceIndices)
+                .map(DeltaLakeColumnProjectionInfo::dereferenceIndices)
                 .orElse(ImmutableList.of());
 
         List<Integer> projectionIndices = ImmutableList.<Integer>builder()
@@ -3231,7 +3231,7 @@ public class DeltaLakeMetadata
             DeltaLakeColumnHandle column = (DeltaLakeColumnHandle) entry.getValue();
             if (column.getBaseColumnName().equals(baseColumnName) &&
                     column.getProjectionInfo()
-                            .map(DeltaLakeColumnProjectionInfo::getDereferenceIndices)
+                            .map(DeltaLakeColumnProjectionInfo::dereferenceIndices)
                             .orElse(ImmutableList.of())
                             .equals(projectionIndices)) {
                 return Optional.of(entry.getKey());
@@ -3456,7 +3456,7 @@ public class DeltaLakeMetadata
     {
         DeltaLakeTableHandle tableHandle = (DeltaLakeTableHandle) table;
         AnalyzeHandle analyzeHandle = tableHandle.getAnalyzeHandle().orElseThrow(() -> new IllegalArgumentException("analyzeHandle not set"));
-        if (analyzeHandle.getAnalyzeMode() == FULL_REFRESH) {
+        if (analyzeHandle.analyzeMode() == FULL_REFRESH) {
             // TODO: Populate stats for incremental ANALYZE https://github.com/trinodb/trino/issues/18110
             generateMissingFileStatistics(session, tableHandle, computedStatistics);
         }
@@ -3567,7 +3567,7 @@ public class DeltaLakeMetadata
             boolean ignoreFailure)
     {
         Optional<ExtendedStatistics> oldStatistics = Optional.empty();
-        boolean loadExistingStats = analyzeHandle.isEmpty() || analyzeHandle.get().getAnalyzeMode() == INCREMENTAL;
+        boolean loadExistingStats = analyzeHandle.isEmpty() || analyzeHandle.get().analyzeMode() == INCREMENTAL;
         if (loadExistingStats) {
             oldStatistics = statisticsAccess.readExtendedStatistics(session, schemaTableName, location);
         }
@@ -3614,7 +3614,7 @@ public class DeltaLakeMetadata
             finalAlreadyAnalyzedModifiedTimeMax = Comparators.max(oldStatistics.get().getAlreadyAnalyzedModifiedTimeMax(), finalAlreadyAnalyzedModifiedTimeMax);
         }
 
-        Optional<Set<String>> analyzedColumns = analyzeHandle.flatMap(AnalyzeHandle::getColumns);
+        Optional<Set<String>> analyzedColumns = analyzeHandle.flatMap(AnalyzeHandle::columns);
         // If update is invoked by other command than ANALYZE, statistics should preserve previous columns set.
         if (analyzeHandle.isEmpty()) {
             analyzedColumns = oldStatistics.flatMap(ExtendedStatistics::getAnalyzedColumns);
@@ -3663,7 +3663,7 @@ public class DeltaLakeMetadata
     private void cleanExtraOutputFiles(ConnectorSession session, Location baseLocation, List<DataFileInfo> validDataFiles)
     {
         Set<Location> writtenFilePaths = validDataFiles.stream()
-                .map(dataFileInfo -> baseLocation.appendPath(dataFileInfo.getPath()))
+                .map(dataFileInfo -> baseLocation.appendPath(dataFileInfo.path()))
                 .collect(toImmutableSet());
 
         cleanExtraOutputFiles(session, writtenFilePaths);
@@ -3951,7 +3951,7 @@ public class DeltaLakeMetadata
         else {
             DeltaLakeColumnProjectionInfo projectionInfo = column.getProjectionInfo().orElseThrow();
             columnName = column.getQualifiedPhysicalName();
-            columnType = projectionInfo.getType();
+            columnType = projectionInfo.type();
         }
         return ColumnMetadata.builder()
                 .setName(columnName)
