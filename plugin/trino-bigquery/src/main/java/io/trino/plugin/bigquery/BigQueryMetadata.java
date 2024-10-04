@@ -67,6 +67,7 @@ import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
 import io.trino.spi.connector.InMemoryRecordSet;
+import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.ProjectionApplicationResult;
 import io.trino.spi.connector.RecordCursor;
 import io.trino.spi.connector.RelationCommentMetadata;
@@ -352,7 +353,8 @@ public class BigQueryMetadata
                 new RemoteTableName(tableInfo.get().getTableId()),
                 tableInfo.get().getDefinition().getType().toString(),
                 partitionType,
-                Optional.ofNullable(tableInfo.get().getDescription())),
+                Optional.ofNullable(tableInfo.get().getDescription()),
+                OptionalLong.empty()),
                 TupleDomain.all(),
                 Optional.empty())
                 .withProjectedColumns(columns.build());
@@ -1086,6 +1088,33 @@ public class BigQueryMetadata
         BigQueryTableHandle updatedHandle = bigQueryTableHandle.withConstraint(newDomain);
 
         return Optional.of(new ConstraintApplicationResult<>(updatedHandle, remainingFilter, constraint.getExpression(), false));
+    }
+
+    @Override
+    public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(ConnectorSession session, ConnectorTableHandle handle, long limit)
+    {
+        BigQueryTableHandle tableHandle = (BigQueryTableHandle) handle;
+        if (!tableHandle.isNamedRelation()) {
+            return Optional.empty();
+        }
+
+        BigQueryNamedRelationHandle table = tableHandle.getRequiredNamedRelation();
+        if (table.getLimit().isPresent() && table.getLimit().getAsLong() <= limit) {
+            return Optional.empty();
+        }
+        return Optional.of(new LimitApplicationResult<>(
+                new BigQueryTableHandle(
+                        new BigQueryNamedRelationHandle(
+                                table.getSchemaTableName(),
+                                table.getRemoteTableName(),
+                                table.getType(),
+                                table.getPartitionType(),
+                                table.getComment(),
+                                OptionalLong.of(limit)),
+                        tableHandle.constraint(),
+                        tableHandle.projectedColumns()),
+                true,
+                false));
     }
 
     @Override

@@ -20,6 +20,7 @@ import io.trino.spi.connector.SchemaTableName;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -32,6 +33,7 @@ public class BigQueryNamedRelationHandle
     private final String type;
     private final Optional<BigQueryPartitionType> partitionType;
     private final Optional<String> comment;
+    private final OptionalLong limit;
 
     @JsonCreator
     public BigQueryNamedRelationHandle(
@@ -39,13 +41,15 @@ public class BigQueryNamedRelationHandle
             @JsonProperty("remoteTableName") RemoteTableName remoteTableName,
             @JsonProperty("type") String type,
             @JsonProperty("partitionType") Optional<BigQueryPartitionType> partitionType,
-            @JsonProperty("comment") Optional<String> comment)
+            @JsonProperty("comment") Optional<String> comment,
+            @JsonProperty("limit") OptionalLong limit)
     {
         this.schemaTableName = requireNonNull(schemaTableName, "schemaTableName is null");
         this.remoteTableName = requireNonNull(remoteTableName, "remoteTableName is null");
         this.type = requireNonNull(type, "type is null");
         this.partitionType = requireNonNull(partitionType, "partitionType is null");
         this.comment = requireNonNull(comment, "comment is null");
+        this.limit = requireNonNull(limit, "limit is null");
     }
 
     @JsonProperty
@@ -78,6 +82,12 @@ public class BigQueryNamedRelationHandle
         return comment;
     }
 
+    @JsonProperty
+    public OptionalLong getLimit()
+    {
+        return limit;
+    }
+
     @Override
     public boolean equals(Object o)
     {
@@ -93,13 +103,14 @@ public class BigQueryNamedRelationHandle
         return Objects.equals(schemaTableName, that.schemaTableName) &&
                 Objects.equals(type, that.type) &&
                 Objects.equals(partitionType, that.partitionType) &&
-                Objects.equals(comment, that.comment);
+                Objects.equals(comment, that.comment) &&
+                Objects.equals(limit, that.limit);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(schemaTableName, type, partitionType, comment);
+        return Objects.hash(schemaTableName, type, partitionType, comment, limit);
     }
 
     @Override
@@ -110,6 +121,7 @@ public class BigQueryNamedRelationHandle
                 .add("schemaTableName", schemaTableName)
                 .add("type", type)
                 .add("comment", comment)
+                .add("limit", limit)
                 .toString();
     }
 }
