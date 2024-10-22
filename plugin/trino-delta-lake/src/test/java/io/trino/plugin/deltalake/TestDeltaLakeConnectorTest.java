@@ -178,7 +178,6 @@ public class TestDeltaLakeConnectorTest
                  SUPPORTS_PREDICATE_PUSHDOWN,
                  SUPPORTS_RENAME_FIELD,
                  SUPPORTS_RENAME_SCHEMA,
-                 SUPPORTS_SET_COLUMN_TYPE,
                  SUPPORTS_TOPN_PUSHDOWN -> false;
             default -> super.hasBehavior(connectorBehavior);
         };
@@ -566,6 +565,23 @@ public class TestDeltaLakeConnectorTest
             assertThatThrownBy(() -> testRenameColumnName(columnName, requiresDelimiting(columnName)))
                     .hasMessageContaining("Cannot rename column in table using column mapping mode NONE");
         }
+    }
+
+    @Override
+    protected Optional<SetColumnTypeSetup> filterSetColumnTypesDataProvider(SetColumnTypeSetup setup)
+    {
+        return switch ("%s -> %s".formatted(setup.sourceColumnType(), setup.newColumnType())) {
+            case "tinyint -> smallint",
+                 "tinyint -> integer",
+                 "smallint -> integer" -> Optional.of(setup);
+            default -> Optional.of(setup.asUnsupported());
+        };
+    }
+
+    @Override
+    protected void verifySetColumnTypeFailurePermissible(Throwable e)
+    {
+        assertThat(e).hasMessageMatching("Cannot change type from .* to .*");
     }
 
     @Test
