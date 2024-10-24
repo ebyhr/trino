@@ -33,6 +33,9 @@ import java.util.zip.Checksum;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.slice.SizeOf.SIZE_OF_INT;
+import static io.delta.kernel.internal.actions.DeletionVectorDescriptor.INLINE_DV_MARKER;
+import static io.delta.kernel.internal.actions.DeletionVectorDescriptor.PATH_DV_MARKER;
+import static io.delta.kernel.internal.actions.DeletionVectorDescriptor.UUID_DV_MARKER;
 import static io.delta.kernel.internal.deletionvectors.Base85Codec.decodeUUID;
 import static io.delta.kernel.internal.deletionvectors.Base85Codec.encodeUUID;
 import static io.trino.plugin.deltalake.DeltaLakeErrorCode.DELTA_LAKE_INVALID_SCHEMA;
@@ -50,10 +53,6 @@ public final class DeletionVectors
     private static final int BIT_MAP_KEY_BYTE_SIZE = 4;
     private static final int FORMAT_VERSION_V1 = 1;
 
-    private static final String UUID_MARKER = "u"; // relative path with random prefix on disk
-    private static final String PATH_MARKER = "p"; // absolute path on disk
-    private static final String INLINE_MARKER = "i"; // inline
-
     private static final CharMatcher ALPHANUMERIC = CharMatcher.inRange('A', 'Z').or(CharMatcher.inRange('a', 'z')).or(CharMatcher.inRange('0', '9')).precomputed();
 
     private DeletionVectors() {}
@@ -61,12 +60,12 @@ public final class DeletionVectors
     public static RoaringBitmapArray readDeletionVectors(TrinoFileSystem fileSystem, Location location, DeletionVectorEntry deletionVector)
             throws IOException
     {
-        if (deletionVector.storageType().equals(UUID_MARKER)) {
+        if (deletionVector.storageType().equals(UUID_DV_MARKER)) {
             TrinoInputFile inputFile = fileSystem.newInputFile(location.appendPath(toFileName(deletionVector.pathOrInlineDv())));
             ByteBuffer buffer = readDeletionVector(inputFile, deletionVector.offset().orElseThrow(), deletionVector.sizeInBytes());
             return deserializeDeletionVectors(buffer);
         }
-        if (deletionVector.storageType().equals(INLINE_MARKER) || deletionVector.storageType().equals(PATH_MARKER)) {
+        if (deletionVector.storageType().equals(INLINE_DV_MARKER) || deletionVector.storageType().equals(PATH_DV_MARKER)) {
             throw new TrinoException(NOT_SUPPORTED, "Unsupported storage type for deletion vector: " + deletionVector.storageType());
         }
         throw new IllegalArgumentException("Unexpected storage type: " + deletionVector.storageType());
@@ -97,7 +96,7 @@ public final class DeletionVectors
             output.writeInt(calculateChecksum(data));
         }
 
-        return new DeletionVectorEntry(UUID_MARKER, pathOrInlineDv, offset, sizeInBytes, cardinality);
+        return new DeletionVectorEntry(UUID_DV_MARKER, pathOrInlineDv, offset, sizeInBytes, cardinality);
     }
 
     private static byte[] serializeAsByteArray(RoaringBitmapArray bitmaps, int sizeInBytes)

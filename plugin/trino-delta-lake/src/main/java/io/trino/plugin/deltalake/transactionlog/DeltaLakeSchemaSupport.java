@@ -67,6 +67,7 @@ import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.Streams.stream;
+import static io.delta.kernel.internal.util.ColumnMapping.COLUMN_MAPPING_MODE_KEY;
 import static io.trino.plugin.deltalake.DeltaLakeColumnType.PARTITION_KEY;
 import static io.trino.plugin.deltalake.DeltaLakeErrorCode.DELTA_LAKE_INVALID_SCHEMA;
 import static io.trino.plugin.deltalake.transactionlog.MetadataEntry.DELTA_CHANGE_DATA_FEED_ENABLED_PROPERTY;
@@ -98,8 +99,6 @@ public final class DeltaLakeSchemaSupport
     private static final Splitter SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings().trimResults();
 
     public static final String APPEND_ONLY_CONFIGURATION_KEY = "delta.appendOnly";
-    public static final String COLUMN_MAPPING_MODE_CONFIGURATION_KEY = "delta.columnMapping.mode";
-    public static final String COLUMN_MAPPING_PHYSICAL_NAME_CONFIGURATION_KEY = "delta.columnMapping.physicalName";
     public static final String MAX_COLUMN_ID_CONFIGURATION_KEY = "delta.columnMapping.maxColumnId";
     public static final String ISOLATION_LEVEL_CONFIGURATION_KEY = "delta.isolationLevel";
     public static final String DELETION_VECTORS_CONFIGURATION_KEY = "delta.enableDeletionVectors";
@@ -214,7 +213,7 @@ public final class DeltaLakeSchemaSupport
     {
         if (protocolEntry.supportsReaderFeatures() || protocolEntry.supportsWriterFeatures()) {
             if (protocolEntry.writerFeaturesContains(ICEBERG_COMPATIBILITY_V1_FEATURE_NAME) || protocolEntry.writerFeaturesContains(ICEBERG_COMPATIBILITY_V2_FEATURE_NAME)) {
-                String columnMappingMode = metadata.getConfiguration().get(COLUMN_MAPPING_MODE_CONFIGURATION_KEY);
+                String columnMappingMode = metadata.getConfiguration().get(COLUMN_MAPPING_MODE_KEY);
                 checkArgument(columnMappingMode != null && columnMappingMode.equals("name"), "Column mapping mode must be 'name' for Iceberg compatibility: %s", columnMappingMode);
                 return ColumnMappingMode.NAME;
             }
@@ -228,7 +227,7 @@ public final class DeltaLakeSchemaSupport
                 return ColumnMappingMode.NONE;
             }
         }
-        String columnMappingMode = metadata.getConfiguration().getOrDefault(COLUMN_MAPPING_MODE_CONFIGURATION_KEY, "none");
+        String columnMappingMode = metadata.getConfiguration().getOrDefault(COLUMN_MAPPING_MODE_KEY, "none");
         return Enums.getIfPresent(ColumnMappingMode.class, columnMappingMode.toUpperCase(ENGLISH)).or(ColumnMappingMode.UNKNOWN);
     }
 
@@ -480,7 +479,7 @@ public final class DeltaLakeSchemaSupport
     public static void verifySupportedColumnMapping(ColumnMappingMode mappingMode)
     {
         if (mappingMode != ColumnMappingMode.ID && mappingMode != ColumnMappingMode.NAME && mappingMode != ColumnMappingMode.NONE) {
-            throw new TrinoException(NOT_SUPPORTED, format("Only 'id', 'name' or 'none' is supported for the '%s' table property", COLUMN_MAPPING_MODE_CONFIGURATION_KEY));
+            throw new TrinoException(NOT_SUPPORTED, format("Only 'id', 'name' or 'none' is supported for the '%s' table property", COLUMN_MAPPING_MODE_KEY));
         }
     }
 

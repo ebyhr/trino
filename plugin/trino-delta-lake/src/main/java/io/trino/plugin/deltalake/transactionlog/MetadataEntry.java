@@ -29,8 +29,8 @@ import java.util.OptionalInt;
 import java.util.UUID;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.delta.kernel.internal.util.ColumnMapping.COLUMN_MAPPING_MODE_KEY;
 import static io.trino.plugin.deltalake.DeltaLakeErrorCode.DELTA_LAKE_INVALID_SCHEMA;
-import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.COLUMN_MAPPING_MODE_CONFIGURATION_KEY;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.DELETION_VECTORS_CONFIGURATION_KEY;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.MAX_COLUMN_ID_CONFIGURATION_KEY;
 import static java.lang.Long.parseLong;
@@ -179,7 +179,7 @@ public class MetadataEntry
         switch (columnMappingMode) {
             case NONE -> { /* do nothing */ }
             case ID, NAME -> {
-                configurationMapBuilder.put(COLUMN_MAPPING_MODE_CONFIGURATION_KEY, columnMappingMode.name().toLowerCase(ENGLISH));
+                configurationMapBuilder.put(COLUMN_MAPPING_MODE_KEY, columnMappingMode.name().toLowerCase(ENGLISH));
                 configurationMapBuilder.put(MAX_COLUMN_ID_CONFIGURATION_KEY, String.valueOf(maxFieldId.orElseThrow()));
             }
             case UNKNOWN -> throw new UnsupportedOperationException();

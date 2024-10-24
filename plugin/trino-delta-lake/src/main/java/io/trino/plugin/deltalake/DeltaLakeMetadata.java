@@ -193,6 +193,7 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Sets.difference;
 import static com.google.common.primitives.Ints.max;
+import static io.delta.kernel.internal.util.ColumnMapping.COLUMN_MAPPING_PHYSICAL_NAME_KEY;
 import static io.trino.filesystem.Locations.appendPath;
 import static io.trino.filesystem.Locations.areDirectoryLocationsEquivalent;
 import static io.trino.hive.formats.HiveClassNames.HIVE_SEQUENCEFILE_OUTPUT_FORMAT_CLASS;
@@ -254,7 +255,6 @@ import static io.trino.plugin.deltalake.metastore.HiveMetastoreBackedDeltaLakeMe
 import static io.trino.plugin.deltalake.procedure.DeltaLakeTableProcedureId.OPTIMIZE;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.APPEND_ONLY_CONFIGURATION_KEY;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.CHANGE_DATA_FEED_FEATURE_NAME;
-import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.COLUMN_MAPPING_PHYSICAL_NAME_CONFIGURATION_KEY;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.ColumnMappingMode.ID;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.ColumnMappingMode.NAME;
 import static io.trino.plugin.deltalake.transactionlog.DeltaLakeSchemaSupport.ColumnMappingMode.NONE;
@@ -1387,7 +1387,7 @@ public class DeltaLakeMetadata
                 case ID, NAME -> {
                     columnMetadata = generateColumnMetadata(columnMappingMode, fieldId);
                     id = OptionalInt.of(fieldId.get());
-                    physicalName = (String) columnMetadata.get(COLUMN_MAPPING_PHYSICAL_NAME_CONFIGURATION_KEY);
+                    physicalName = (String) columnMetadata.get(COLUMN_MAPPING_PHYSICAL_NAME_KEY);
                 }
                 default -> throw new IllegalArgumentException("Unexpected column mapping mode: " + columnMappingMode);
             }
