@@ -26,6 +26,7 @@ import org.roaringbitmap.RoaringBitmap;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.zip.CRC32;
@@ -55,6 +56,7 @@ public final class DeletionVectors
     private static final String INLINE_MARKER = "i"; // inline
 
     private static final CharMatcher ALPHANUMERIC = CharMatcher.inRange('A', 'Z').or(CharMatcher.inRange('a', 'z')).or(CharMatcher.inRange('0', '9')).precomputed();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private DeletionVectors() {}
 
@@ -75,12 +77,18 @@ public final class DeletionVectors
     public static DeletionVectorEntry writeDeletionVectors(
             TrinoFileSystem fileSystem,
             Location location,
-            RoaringBitmapArray deletedRows)
+            RoaringBitmapArray deletedRows,
+            int randomPrefixLength)
             throws IOException
     {
         UUID uuid = randomUUID();
-        String deletionVectorFilename = "deletion_vector_" + uuid + ".bin";
         String pathOrInlineDv = encodeUUID(uuid);
+        String deletionVectorFilename = "deletion_vector_" + uuid + ".bin";
+        if (randomPrefixLength > 0) {
+            String randomPrefix = randomPrefix(randomPrefixLength);
+            pathOrInlineDv = randomPrefix + pathOrInlineDv;
+            location = location.appendPath(randomPrefix);
+        }
         int sizeInBytes = MAGIC_NUMBER_BYTE_SIZE + BIT_MAP_COUNT_BYTE_SIZE + BIT_MAP_KEY_BYTE_SIZE + deletedRows.serializedSizeInBytes();
         long cardinality = deletedRows.cardinality();
 
@@ -98,6 +106,16 @@ public final class DeletionVectors
         }
 
         return new DeletionVectorEntry(UUID_MARKER, pathOrInlineDv, offset, sizeInBytes, cardinality);
+    }
+
+    private static String randomPrefix(int length)
+    {
+        String alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder prefix = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            prefix.append(alphanumeric.charAt(RANDOM.nextInt(alphanumeric.length())));
+        }
+        return prefix.toString();
     }
 
     private static byte[] serializeAsByteArray(RoaringBitmapArray bitmaps, int sizeInBytes)

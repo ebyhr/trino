@@ -85,6 +85,7 @@ import static io.trino.spi.type.TinyintType.TINYINT;
 import static io.trino.spi.type.VarbinaryType.VARBINARY;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -204,6 +205,18 @@ public final class DeltaLakeSchemaSupport
         return parseBoolean(metadataEntry.getConfiguration().get(DELETION_VECTORS_CONFIGURATION_KEY));
     }
 
+    public static int getRandomPrefixLength(MetadataEntry metadataEntry)
+    {
+        boolean randomizeFilePrefixes = parseBoolean(metadataEntry.getConfiguration().get("delta.randomizeFilePrefixes"));
+        if (randomizeFilePrefixes) {
+            // 2 is the default value in Delta Lake
+            int randomPrefixLength = parseInt(metadataEntry.getConfiguration().getOrDefault("delta.randomPrefixLength", "2"));
+            checkArgument(randomPrefixLength >= 0, "randomPrefixLength must be positive: %s", randomPrefixLength);
+            return randomPrefixLength;
+        }
+        return 0;
+    }
+
     public static List<String> enabledUniversalFormats(MetadataEntry metadataEntry)
     {
         String formats = metadataEntry.getConfiguration().get(UNIVERSAL_FORMAT_CONFIGURATION_KEY);
@@ -243,7 +256,7 @@ public final class DeltaLakeSchemaSupport
     {
         String maxColumnId = metadata.getConfiguration().get(MAX_COLUMN_ID_CONFIGURATION_KEY);
         requireNonNull(maxColumnId, MAX_COLUMN_ID_CONFIGURATION_KEY + " metadata configuration property not found");
-        return Integer.parseInt(maxColumnId);
+        return parseInt(maxColumnId);
     }
 
     public static List<DeltaLakeColumnHandle> extractPartitionColumns(MetadataEntry metadataEntry, ProtocolEntry protocolEntry, TypeManager typeManager)
@@ -522,7 +535,7 @@ public final class DeltaLakeSchemaSupport
             case ID:
                 String columnMappingId = metadata.get("delta.columnMapping.id").asText();
                 verify(!isNullOrEmpty(columnMappingId), "id is null or empty");
-                fieldId = OptionalInt.of(Integer.parseInt(columnMappingId));
+                fieldId = OptionalInt.of(parseInt(columnMappingId));
                 // Databricks stores column statistics with physical name
                 physicalName = metadata.get("delta.columnMapping.physicalName").asText();
                 verify(!isNullOrEmpty(physicalName), "physicalName is null or empty");
