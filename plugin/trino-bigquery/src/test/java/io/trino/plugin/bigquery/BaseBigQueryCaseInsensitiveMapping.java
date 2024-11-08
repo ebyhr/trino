@@ -249,13 +249,8 @@ public abstract class BaseBigQueryCaseInsensitiveMapping
         return () -> bigQuerySqlExecutor.dropDatasetIfExists(schemaName);
     }
 
-    /**
-     * @deprecated Use {@link TestTable} instead.
-     */
-    @Deprecated
     private AutoCloseable withTable(String tableName, String tableDefinition)
     {
-        bigQuerySqlExecutor.execute(format("CREATE TABLE %s %s", tableName, tableDefinition));
-        return () -> bigQuerySqlExecutor.execute(format("DROP TABLE %s", tableName));
+        return new TestTable(bigQuerySqlExecutor, tableName, tableDefinition);
     }
 }
