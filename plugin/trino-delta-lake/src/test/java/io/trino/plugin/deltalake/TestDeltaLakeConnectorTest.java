@@ -4129,6 +4129,21 @@ public class TestDeltaLakeConnectorTest
         }
     }
 
+    @Test
+    public void testHistoryTableAccessControl()
+    {
+        try (TestTable table = new TestTable(getQueryRunner()::execute, "test_history_access_control", "(x int)")) {
+            // TODO Disallow access to metadata tables when the user can't access the base table
+            assertAccessAllowed(
+                    "SELECT * FROM \"" + table.getName() + "$history\"",
+                    privilege(table.getName(), SELECT_COLUMN));
+            assertAccessDenied(
+                    "SELECT * FROM \"" + table.getName() + "$history\"",
+                    "Cannot select from columns .*",
+                    privilege(table.getName() + "$history", SELECT_COLUMN));
+        }
+    }
+
     @Override
     protected Session withoutSmallFileThreshold(Session session)
     {
