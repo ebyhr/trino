@@ -33,6 +33,7 @@ import org.apache.datasketches.theta.Sketch;
 import org.apache.datasketches.theta.Union;
 import org.apache.datasketches.theta.UpdateSketch;
 import org.apache.iceberg.types.Conversions;
+import org.apache.iceberg.types.Types;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,6 +44,7 @@ import static io.trino.plugin.iceberg.IcebergTypes.convertTrinoValueToIceberg;
 import static io.trino.plugin.iceberg.TypeConverter.toIcebergTypeForNewColumn;
 import static io.trino.spi.type.TypeUtils.readNativeValue;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iceberg.util.DateTimeUtil.isoTimestampToNanos;
 
 @AggregationFunction(value = IcebergThetaSketchForStats.NAME, hidden = true)
 public final class IcebergThetaSketchForStats
@@ -60,10 +62,19 @@ public final class IcebergThetaSketchForStats
         Object trinoValue = readNativeValue(type, block, index);
         org.apache.iceberg.types.Type icebergType = toIcebergTypeForNewColumn(type, new AtomicInteger(1));
         Object icebergValue = convertTrinoValueToIceberg(type, trinoValue);
-        ByteBuffer byteBuffer = Conversions.toByteBuffer(icebergType, icebergValue);
+        ByteBuffer byteBuffer = toByteBuffer(icebergType, icebergValue);
         requireNonNull(byteBuffer, "byteBuffer is null"); // trino value isn't null
         byte[] bytes = getBytes(byteBuffer);
         getOrCreateUpdateSketch(state).update(bytes);
+    }
+
+    private static ByteBuffer toByteBuffer(org.apache.iceberg.types.Type type, Object value)
+    {
+        if (type.equals(Types.TimestampNanoType.withoutZone())) {
+            long nanos = isoTimestampToNanos((String) value);
+            return Conversions.toByteBuffer(type, nanos);
+        }
+        return Conversions.toByteBuffer(type, value);
     }
 
     @CombineFunction

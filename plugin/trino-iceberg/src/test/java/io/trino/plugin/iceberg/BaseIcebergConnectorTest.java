@@ -4658,6 +4658,7 @@ public abstract class BaseIcebergConnectorTest
                 "  a_date date, " +
                 "  a_time time(6), " +
                 "  a_timestamp timestamp(6), " +
+                "  a_timestamp_nanos timestamp(9), " +
                 "  a_timestamptz timestamp(6) with time zone, " +
                 "  a_uuid uuid, " +
                 "  a_row row(id integer, vc varchar), " +
@@ -4678,13 +4679,14 @@ public abstract class BaseIcebergConnectorTest
                 "DATE '2021-07-24'," +
                 "TIME '02:43:57.987654', " +
                 "TIMESTAMP '2021-07-24 03:43:57.987654'," +
+                "TIMESTAMP '2021-07-24 03:43:57.987654321'," +
                 "TIMESTAMP '2021-07-24 04:43:57.987654 UTC', " +
                 "UUID '20050910-1330-11e9-ffff-2a86e4085a59', " +
                 "CAST(ROW(42, 'this is a random value') AS ROW(id int, vc varchar)), " +
                 "ARRAY[VARCHAR 'uno', 'dos', 'tres'], " +
                 "map(ARRAY[1,2], ARRAY['ek', VARCHAR 'one'])) ";
 
-        String nullValues = nCopies(17, "NULL").stream()
+        String nullValues = nCopies(18, "NULL").stream()
                 .collect(joining(", ", "VALUES (", ")"));
 
         assertUpdate("INSERT INTO test_all_types " + values, 1);
@@ -4708,6 +4710,7 @@ public abstract class BaseIcebergConnectorTest
                 "AND a_date = DATE '2021-07-24' " +
                 "AND a_time = TIME '02:43:57.987654' " +
                 "AND a_timestamp = TIMESTAMP '2021-07-24 03:43:57.987654' " +
+                "AND a_timestamp_nanos = TIMESTAMP '2021-07-24 03:43:57.987654321' " +
                 "AND a_timestamptz = TIMESTAMP '2021-07-24 04:43:57.987654 UTC' " +
                 "AND a_uuid = UUID '20050910-1330-11e9-ffff-2a86e4085a59' " +
                 "AND a_row = CAST(ROW(42, 'this is a random value') AS ROW(id int, vc varchar)) " +
@@ -4729,6 +4732,7 @@ public abstract class BaseIcebergConnectorTest
                 "AND a_date IS NULL " +
                 "AND a_time IS NULL " +
                 "AND a_timestamp IS NULL " +
+                "AND a_timestamp_nanos IS NULL " +
                 "AND a_timestamptz IS NULL " +
                 "AND a_uuid IS NULL " +
                 "AND a_row IS NULL " +
@@ -4755,6 +4759,7 @@ public abstract class BaseIcebergConnectorTest
                             "  ('a_date', NULL, 1e0, 0.5e0, NULL, '2021-07-24', '2021-07-24'), " +
                             "  ('a_time', NULL, 1e0, 0.5e0, NULL, NULL, NULL), " +
                             "  ('a_timestamp', NULL, 1e0, 0.5e0, NULL, " + (format == ORC ? "'2021-07-24 03:43:57.987000', '2021-07-24 03:43:57.987999'" : "'2021-07-24 03:43:57.987654', '2021-07-24 03:43:57.987654'") + "), " +
+                            "  ('a_timestamp_nanos', NULL, 1e0, 0.5e0, NULL, " + (format == ORC ? "'2021-07-24 03:43:57.987000', '2021-07-24 03:43:57.987999'" : "'2021-07-24 03:43:57.987654321', '2021-07-24 03:43:57.987654321'") + "), " +
                             "  ('a_timestamptz', NULL, 1e0, 0.5e0, NULL, '2021-07-24 04:43:57.987 UTC', '2021-07-24 04:43:57.987 UTC'), " +
                             "  ('a_uuid', NULL, 1e0, 0.5e0, NULL, NULL, NULL), " +
                             "  ('a_row', NULL, NULL, " + (format == ORC ? "0.5" : "NULL") + ", NULL, NULL, NULL), " +
@@ -4778,6 +4783,7 @@ public abstract class BaseIcebergConnectorTest
                             "  ('a_date', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_time', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_timestamp', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
+                            "  ('a_timestamp_nanos', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_timestamptz', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_uuid', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_row', NULL, NULL, NULL, NULL, NULL, NULL), " +
@@ -4809,6 +4815,7 @@ public abstract class BaseIcebergConnectorTest
                             "  ('a_date', NULL, 1e0, 0.5e0, NULL, '2021-07-24', '2021-07-24'), " +
                             "  ('a_time', NULL, 1e0, 0.5e0, NULL, NULL, NULL), " +
                             "  ('a_timestamp', NULL, 1e0, 0.5e0, NULL, " + (format == ORC ? "'2021-07-24 03:43:57.987000', '2021-07-24 03:43:57.987999'" : "'2021-07-24 03:43:57.987654', '2021-07-24 03:43:57.987654'") + "), " +
+                            "  ('a_timestamp_nanos', NULL, 1e0, 0.5e0, NULL, " + (format == ORC ? "'2021-07-24 03:43:57.987000', '2021-07-24 03:43:57.987999'" : "'2021-07-24 03:43:57.987654321', '2021-07-24 03:43:57.987654321'") + "), " +
                             "  ('a_timestamptz', NULL, 1e0, 0.5e0, NULL, '2021-07-24 04:43:57.987 UTC', '2021-07-24 04:43:57.987 UTC'), " +
                             "  ('a_uuid', NULL, 1e0, 0.5e0, NULL, NULL, NULL), " +
                             "  ('a_row', NULL, NULL, " + (format == ORC ? "0.5" : "NULL") + ", NULL, NULL, NULL), " +
@@ -4832,6 +4839,7 @@ public abstract class BaseIcebergConnectorTest
                             "  ('a_date', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_time', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_timestamp', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
+                            "  ('a_timestamp_nanos', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_timestamptz', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_uuid', NULL, 1e0, 0.1e0, NULL, NULL, NULL), " +
                             "  ('a_row', NULL, NULL, NULL, NULL, NULL, NULL), " +
@@ -4861,6 +4869,7 @@ public abstract class BaseIcebergConnectorTest
                     "  data.a_date, " +
                     "  data.a_time, " +
                     "  data.a_timestamp, " +
+                    "  data.a_timestamp_nanos, " +
                     "  data.a_timestamptz, " +
                     "  data.a_uuid " +
                     " FROM \"test_all_types$partitions\" "))
@@ -4884,6 +4893,9 @@ public abstract class BaseIcebergConnectorTest
                                     (format == ORC ?
                                             "  CAST(ROW(TIMESTAMP '2021-07-24 03:43:57.987000', TIMESTAMP '2021-07-24 03:43:57.987999', 1, NULL) AS ROW(min timestamp(6), max timestamp(6), null_count bigint, nan_count bigint)), " :
                                             "  CAST(ROW(TIMESTAMP '2021-07-24 03:43:57.987654', TIMESTAMP '2021-07-24 03:43:57.987654', 1, NULL) AS ROW(min timestamp(6), max timestamp(6), null_count bigint, nan_count bigint)), ") +
+                                    (format == ORC ?
+                                            "  CAST(ROW(TIMESTAMP '2021-07-24 03:43:57.987000000', TIMESTAMP '2021-07-24 03:43:57.987999999', 1, NULL) AS ROW(min timestamp(6), max timestamp(6), null_count bigint, nan_count bigint)), " :
+                                            "  CAST(ROW(TIMESTAMP '2021-07-24 03:43:57.987654321', TIMESTAMP '2021-07-24 03:43:57.987654321', 1, NULL) AS ROW(min timestamp(6), max timestamp(6), null_count bigint, nan_count bigint)), ") +
                                     (format == ORC ?
                                             "  CAST(ROW(TIMESTAMP '2021-07-24 04:43:57.987000 UTC', TIMESTAMP '2021-07-24 04:43:57.987999 UTC', 1, NULL) AS ROW(min timestamp(6) with time zone, max timestamp(6) with time zone, null_count bigint, nan_count bigint)), " :
                                             "  CAST(ROW(TIMESTAMP '2021-07-24 04:43:57.987654 UTC', TIMESTAMP '2021-07-24 04:43:57.987654 UTC', 1, NULL) AS ROW(min timestamp(6) with time zone, max timestamp(6) with time zone, null_count bigint, nan_count bigint)), ") +
@@ -4909,6 +4921,7 @@ public abstract class BaseIcebergConnectorTest
                     "  data.a_date, " +
                     "  data.a_time, " +
                     "  data.a_timestamp, " +
+                    "  data.a_timestamp_nanos, " +
                     "  data.a_timestamptz, " +
                     "  data.a_uuid " +
                     " FROM \"test_all_types$partitions\" "))
@@ -4928,6 +4941,7 @@ public abstract class BaseIcebergConnectorTest
                                     "  CAST(NULL AS ROW(min date, max date, null_count bigint, nan_count bigint)), " +
                                     "  CAST(NULL AS ROW(min time(6), max time(6), null_count bigint, nan_count bigint)), " +
                                     "  CAST(NULL AS ROW(min timestamp(6), max timestamp(6), null_count bigint, nan_count bigint)), " +
+                                    "  CAST(NULL AS ROW(min timestamp(9), max timestamp(9), null_count bigint, nan_count bigint)), " +
                                     "  CAST(NULL AS ROW(min timestamp(6) with time zone, max timestamp(6) with time zone, null_count bigint, nan_count bigint)), " +
                                     "  CAST(NULL AS ROW(min uuid, max uuid, null_count bigint, nan_count bigint)) " +
                                     ")");

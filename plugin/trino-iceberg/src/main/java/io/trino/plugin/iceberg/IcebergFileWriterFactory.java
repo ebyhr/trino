@@ -77,6 +77,7 @@ import static io.trino.plugin.iceberg.IcebergUtil.getOrcBloomFilterColumns;
 import static io.trino.plugin.iceberg.IcebergUtil.getOrcBloomFilterFpp;
 import static io.trino.plugin.iceberg.IcebergUtil.getParquetBloomFilterColumns;
 import static io.trino.plugin.iceberg.TypeConverter.toTrinoType;
+import static io.trino.plugin.iceberg.parquet.IcebergParquetSchemaUtil.convert;
 import static io.trino.plugin.iceberg.util.OrcTypeConverter.toOrcType;
 import static io.trino.plugin.iceberg.util.PrimitiveTypeMapBuilder.makeTypeMap;
 import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;
@@ -84,7 +85,6 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iceberg.TableProperties.DEFAULT_WRITE_METRICS_MODE;
 import static org.apache.iceberg.io.DeleteSchemaUtil.pathPosSchema;
-import static org.apache.iceberg.parquet.ParquetSchemaUtil.convert;
 
 public class IcebergFileWriterFactory
 {
@@ -130,7 +130,7 @@ public class IcebergFileWriterFactory
         return switch (fileFormat) {
             // TODO use metricsConfig https://github.com/trinodb/trino/issues/9791
             case PARQUET -> createParquetWriter(MetricsConfig.getDefault(), fileSystem, outputPath, icebergSchema, session, storageProperties);
-            case ORC -> createOrcWriter(metricsConfig, fileSystem, outputPath, icebergSchema, session, storageProperties, getOrcStringStatisticsLimit(session));
+            case ORC -> createOrcWriter(MetricsConfig.getDefault(), fileSystem, outputPath, icebergSchema, session, storageProperties, getOrcStringStatisticsLimit(session));
             case AVRO -> createAvroWriter(fileSystem, outputPath, icebergSchema, session);
         };
     }

@@ -1517,6 +1517,27 @@ public class TestIcebergV2
         catalog.dropTable(SESSION, schemaTableName);
     }
 
+    @Test
+    void testTimestampNano()
+    {
+        // ORC supports the type, but the stats seems wrong
+        try (TestTable table = newTrinoTable("test_nano", "(id int, x timestamp(9)) WITH (format = 'AVRO')")) {
+            assertUpdate("INSERT INTO " + table.getName() + " VALUES (1, timestamp '2022-07-26 12:13:14.123456789')", 1);
+            assertThat(query("SELECT 1 FROM " + table.getName() + " WHERE x = timestamp '2022-07-26 12:13:14.123456789'"))
+                    .matches("VALUES 1");
+        }
+    }
+
+    @Test
+    void testTimestampNanoPartition()
+    {
+        try (TestTable table = newTrinoTable("test_nano", "(id int, x timestamp(9)) WITH (partitioning = array['x'])")) {
+            assertUpdate("INSERT INTO " + table.getName() + " VALUES (1, timestamp '2022-07-26 12:13:14.123456789')", 1);
+            assertThat(query("SELECT 1 FROM " + table.getName() + " WHERE x = timestamp '2022-07-26 12:13:14.123456789'"))
+                    .matches("VALUES 1");
+        }
+    }
+
     private void testHighlyNestedFieldPartitioningWithTimestampTransform(String partitioning, String partitionDirectoryRegex, Set<String> expectedPartitionDirectories)
     {
         String tableName = "test_highly_nested_field_partitioning_with_timestamp_transform_" + randomNameSuffix();

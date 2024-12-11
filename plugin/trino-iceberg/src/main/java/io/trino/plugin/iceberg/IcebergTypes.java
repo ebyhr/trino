@@ -19,6 +19,7 @@ import io.airlift.slice.Slices;
 import io.trino.spi.type.DecimalType;
 import io.trino.spi.type.Decimals;
 import io.trino.spi.type.Int128;
+import io.trino.spi.type.LongTimestamp;
 import io.trino.spi.type.LongTimestampWithTimeZone;
 import io.trino.spi.type.UuidType;
 import io.trino.spi.type.VarbinaryType;
@@ -33,6 +34,7 @@ import java.util.UUID;
 
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.trino.plugin.base.io.ByteBuffers.getWrappedBytes;
+import static io.trino.plugin.iceberg.util.Timestamps.timestampToNanos;
 import static io.trino.plugin.iceberg.util.Timestamps.timestampTzFromMicros;
 import static io.trino.plugin.iceberg.util.Timestamps.timestampTzToMicros;
 import static io.trino.spi.type.BigintType.BIGINT;
@@ -43,6 +45,7 @@ import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.RealType.REAL;
 import static io.trino.spi.type.TimeType.TIME_MICROS;
 import static io.trino.spi.type.TimestampType.TIMESTAMP_MICROS;
+import static io.trino.spi.type.TimestampType.TIMESTAMP_NANOS;
 import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_MICROS;
 import static io.trino.spi.type.Timestamps.PICOSECONDS_PER_MICROSECOND;
 import static io.trino.spi.type.UuidType.javaUuidToTrinoUuid;
@@ -53,6 +56,7 @@ import static java.lang.Math.multiplyExact;
 import static java.lang.Math.toIntExact;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iceberg.util.DateTimeUtil.nanosToIsoTimestamp;
 
 public final class IcebergTypes
 {
@@ -108,6 +112,12 @@ public final class IcebergTypes
         if (type.equals(TIMESTAMP_MICROS)) {
             //noinspection RedundantCast
             return (long) trinoNativeValue;
+        }
+
+        if (type.equals(TIMESTAMP_NANOS)) {
+            long nanos = timestampToNanos((LongTimestamp) trinoNativeValue);
+            // https://github.com/apache/iceberg/pull/11775 Use string because Iceberg library has an overflow issue
+            return nanosToIsoTimestamp(nanos);
         }
 
         if (type.equals(TIMESTAMP_TZ_MICROS)) {
@@ -184,6 +194,16 @@ public final class IcebergTypes
                 return timestampTzFromMicros(epochMicros);
             }
             return epochMicros;
+        }
+        if (icebergType instanceof Types.TimestampNanoType icebergTimestampNanoType) {
+            long epochNanos = (long) value;
+            if (icebergTimestampNanoType.shouldAdjustToUTC()) {
+                return timestampTzFromMicros(epochNanos);
+            }
+            // TODO Fix and extract a method
+            long epochMicros = epochNanos / 1_000;
+            int picosOfMicro = (int) (epochNanos % 1_000);
+            return new LongTimestamp(epochMicros, picosOfMicro * 1000);
         }
         if (icebergType instanceof Types.UUIDType) {
             return javaUuidToTrinoUuid((UUID) value);

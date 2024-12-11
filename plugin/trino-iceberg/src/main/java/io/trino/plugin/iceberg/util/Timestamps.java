@@ -15,12 +15,15 @@ package io.trino.plugin.iceberg.util;
 
 import com.google.common.math.LongMath;
 import io.trino.spi.block.Block;
+import io.trino.spi.type.LongTimestamp;
 import io.trino.spi.type.LongTimestampWithTimeZone;
 
 import static io.trino.spi.type.TimeZoneKey.UTC_KEY;
 import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_MICROS;
 import static io.trino.spi.type.Timestamps.MICROSECONDS_PER_MILLISECOND;
+import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MICROSECOND;
 import static io.trino.spi.type.Timestamps.PICOSECONDS_PER_MICROSECOND;
+import static io.trino.spi.type.Timestamps.PICOSECONDS_PER_NANOSECOND;
 import static java.lang.Math.floorDiv;
 import static java.lang.Math.floorMod;
 import static java.math.RoundingMode.UNNECESSARY;
@@ -28,6 +31,12 @@ import static java.math.RoundingMode.UNNECESSARY;
 public final class Timestamps
 {
     private Timestamps() {}
+
+    public static long timestampToNanos(LongTimestamp timestamp)
+    {
+        return (timestamp.getEpochMicros() * NANOSECONDS_PER_MICROSECOND) +
+                LongMath.divide(timestamp.getPicosOfMicro(), PICOSECONDS_PER_NANOSECOND, UNNECESSARY);
+    }
 
     public static long timestampTzToMicros(LongTimestampWithTimeZone timestamp)
     {
