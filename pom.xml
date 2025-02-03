@@ -1958,6 +1958,12 @@
 
             <dependency>
                 <groupId>org.apache.iceberg</groupId>
+                <artifactId>iceberg-data</artifactId>
+                <version>${dep.iceberg.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.iceberg</groupId>
                 <artifactId>iceberg-orc</artifactId>
                 <version>${dep.iceberg.version}</version>
                 <exclusions>
