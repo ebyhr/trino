@@ -38,6 +38,12 @@ public class TestView
     }
 
     @Override
+    public String toString()
+    {
+        return name;
+    }
+
+    @Override
     public void close()
     {
         sqlExecutor.execute("DROP VIEW " + name);
