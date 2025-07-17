@@ -34,6 +34,7 @@ public class IcebergRestCatalogConfig
     {
         NONE,
         OAUTH2,
+        GOOGLE,
     }
 
     public enum SessionType

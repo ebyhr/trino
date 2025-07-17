@@ -521,6 +521,8 @@ following properties:
   - Enable AWS Signature version 4 (SigV4). Defaults to `false`.
 * - `iceberg.rest-catalog.signing-name`
   - AWS SigV4 signing service name. Defaults to `execute-api`.
+* - `iceberg.rest-catalog.google-project-id`
+  - Google Cloud project name. Example: `development-123456`.
 * - `iceberg.rest-catalog.case-insensitive-name-matching`
   - Match namespace, table, and view names case insensitively. Defaults to `false`.
 * - `iceberg.rest-catalog.case-insensitive-name-matching.cache-ttl`

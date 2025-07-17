@@ -38,8 +38,7 @@ public class IcebergRestCatalogModule
         install(conditionalModule(
                 IcebergRestCatalogConfig.class,
                 config -> config.getSecurity() == Security.OAUTH2,
-                new OAuth2SecurityModule(),
-                new NoneSecurityModule()));
+                new OAuth2SecurityModule()));
         install(conditionalModule(
                 IcebergRestCatalogConfig.class,
                 IcebergRestCatalogConfig::isSigV4Enabled,
@@ -48,6 +47,14 @@ public class IcebergRestCatalogModule
                     internalBinder.bind(AwsProperties.class).to(SigV4AwsProperties.class).in(Scopes.SINGLETON);
                 },
                 internalBinder -> internalBinder.bind(AwsProperties.class).toInstance(ImmutableMap::of)));
+        install(conditionalModule(
+                IcebergRestCatalogConfig.class,
+                config -> config.getSecurity() == Security.GOOGLE,
+                new GoogleSecurityModule()));
+        install(conditionalModule(
+                IcebergRestCatalogConfig.class,
+                config -> config.getSecurity() == Security.NONE,
+                new NoneSecurityModule()));
 
         binder.bind(TrinoCatalogFactory.class).to(TrinoIcebergRestCatalogFactory.class).in(Scopes.SINGLETON);
         newOptionalBinder(binder, IcebergFileSystemFactory.class).setBinding().to(IcebergRestCatalogFileSystemFactory.class).in(Scopes.SINGLETON);
