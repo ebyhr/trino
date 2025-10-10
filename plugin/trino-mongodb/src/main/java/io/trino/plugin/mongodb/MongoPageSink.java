@@ -277,11 +277,15 @@ public class MongoPageSink
     @Override
     public CompletableFuture<Collection<Slice>> finish()
     {
+        mongoSession.close();
         Slice value = Slices.allocate(Long.BYTES);
         value.setLong(0, pageSinkId.getId());
         return completedFuture(ImmutableList.of(value));
     }
 
     @Override
-    public void abort() {}
+    public void abort()
+    {
+        mongoSession.close();
+    }
 }

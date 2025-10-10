@@ -20,17 +20,18 @@ import static java.util.Objects.requireNonNull;
 public class DefaultMongoMetadataFactory
         implements MongoMetadataFactory
 {
-    private final MongoSession mongoSession;
+    private final MongoSessionFactory sessionFactory;
 
     @Inject
-    public DefaultMongoMetadataFactory(MongoSession mongoSession)
+    public DefaultMongoMetadataFactory(MongoSessionFactory sessionFactory)
     {
-        this.mongoSession = requireNonNull(mongoSession, "mongoSession is null");
+        this.sessionFactory = requireNonNull(sessionFactory, "sessionFactory is null");
     }
 
     @Override
     public MongoMetadata create()
     {
-        return new MongoMetadata(mongoSession);
+        // TODO Create and close a new session in MongoMetadata
+        return new MongoMetadata(sessionFactory.create());
     }
 }

@@ -27,13 +27,13 @@ import static java.util.Objects.requireNonNull;
 public class MongoPageSinkProvider
         implements ConnectorPageSinkProvider
 {
-    private final MongoSession mongoSession;
+    private final MongoSessionFactory sessionFactory;
     private final String implicitPrefix;
 
     @Inject
-    public MongoPageSinkProvider(MongoClientConfig config, MongoSession mongoSession)
+    public MongoPageSinkProvider(MongoClientConfig config, MongoSessionFactory sessionFactory)
     {
-        this.mongoSession = requireNonNull(mongoSession, "mongoSession is null");
+        this.sessionFactory = requireNonNull(sessionFactory, "sessionFactory is null");
         this.implicitPrefix = config.getImplicitRowFieldPrefix();
     }
 
@@ -41,13 +41,13 @@ public class MongoPageSinkProvider
     public ConnectorPageSink createPageSink(ConnectorTransactionHandle transactionHandle, ConnectorSession session, ConnectorOutputTableHandle outputTableHandle, ConnectorPageSinkId pageSinkId)
     {
         MongoOutputTableHandle handle = (MongoOutputTableHandle) outputTableHandle;
-        return new MongoPageSink(mongoSession, handle.getTemporaryRemoteTableName().orElseGet(handle::remoteTableName), handle.columns(), implicitPrefix, handle.pageSinkIdColumnName(), pageSinkId);
+        return new MongoPageSink(sessionFactory.create(), handle.getTemporaryRemoteTableName().orElseGet(handle::remoteTableName), handle.columns(), implicitPrefix, handle.pageSinkIdColumnName(), pageSinkId);
     }
 
     @Override
     public ConnectorPageSink createPageSink(ConnectorTransactionHandle transactionHandle, ConnectorSession session, ConnectorInsertTableHandle insertTableHandle, ConnectorPageSinkId pageSinkId)
     {
         MongoInsertTableHandle handle = (MongoInsertTableHandle) insertTableHandle;
-        return new MongoPageSink(mongoSession, handle.getTemporaryRemoteTableName().orElseGet(handle::remoteTableName), handle.columns(), implicitPrefix, handle.pageSinkIdColumnName(), pageSinkId);
+        return new MongoPageSink(sessionFactory.create(), handle.getTemporaryRemoteTableName().orElseGet(handle::remoteTableName), handle.columns(), implicitPrefix, handle.pageSinkIdColumnName(), pageSinkId);
     }
 }

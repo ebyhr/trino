@@ -40,7 +40,6 @@ import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
-import io.trino.cache.EvictableCacheBuilder;
 import io.trino.spi.HostAddress;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
@@ -126,7 +125,6 @@ import static java.lang.String.format;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -183,18 +181,22 @@ public class MongoSession
     private final Cache<SchemaTableName, MongoTable> tableCache;
     private final String implicitPrefix;
 
-    public MongoSession(TypeManager typeManager, MongoClient client, MongoClientConfig config)
+    public MongoSession(
+            TypeManager typeManager,
+            MongoClient client,
+            String schemaCollection,
+            boolean caseInsensitiveNameMatching,
+            int cursorBatchSize,
+            Cache<SchemaTableName, MongoTable> tableCache,
+            String implicitPrefix)
     {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
         this.client = requireNonNull(client, "client is null");
-        this.schemaCollection = requireNonNull(config.getSchemaCollection(), "config.getSchemaCollection() is null");
-        this.caseInsensitiveNameMatching = config.isCaseInsensitiveNameMatching();
-        this.cursorBatchSize = config.getCursorBatchSize();
-        this.implicitPrefix = requireNonNull(config.getImplicitRowFieldPrefix(), "config.getImplicitRowFieldPrefix() is null");
-
-        this.tableCache = EvictableCacheBuilder.newBuilder()
-                .expireAfterWrite(1, MINUTES)  // TODO: Configure
-                .build();
+        this.schemaCollection = requireNonNull(schemaCollection, "schemaCollection is null");
+        this.caseInsensitiveNameMatching = caseInsensitiveNameMatching;
+        this.cursorBatchSize = cursorBatchSize;
+        this.implicitPrefix = requireNonNull(implicitPrefix, "implicitPrefix is null");
+        this.tableCache = requireNonNull(tableCache, "tableCache is null");
     }
 
     @Override

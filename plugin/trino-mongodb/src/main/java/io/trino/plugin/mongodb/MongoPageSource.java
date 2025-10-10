@@ -97,6 +97,7 @@ public class MongoPageSource
     private static final ISOChronology UTC_CHRONOLOGY = ISOChronology.getInstanceUTC();
     private static final int ROWS_PER_REQUEST = 1024;
 
+    private final MongoSession mongoSession;
     private final MongoCursor<Document> cursor;
     private final List<MongoColumnHandle> columns;
     private final List<Type> columnTypes;
@@ -112,6 +113,7 @@ public class MongoPageSource
             List<MongoColumnHandle> columns,
             String implicitPrefix)
     {
+        this.mongoSession = requireNonNull(mongoSession, "mongoSession is null");
         this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
         this.columnTypes = columns.stream().map(MongoColumnHandle::type).collect(toList());
         this.cursor = mongoSession.execute(tableHandle, columns);
@@ -444,6 +446,7 @@ public class MongoPageSource
     @Override
     public void close()
     {
+        mongoSession.close();
         cursor.close();
     }
 }

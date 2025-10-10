@@ -23,17 +23,19 @@ import static java.util.Objects.requireNonNull;
 public class SessionBasedMongoServerDetailsProvider
         implements MongoServerDetailsProvider
 {
-    private final MongoSession mongoSession;
+    private final MongoSessionFactory sessionFactory;
 
     @Inject
-    public SessionBasedMongoServerDetailsProvider(MongoSession mongoSession)
+    public SessionBasedMongoServerDetailsProvider(MongoSessionFactory sessionFactory)
     {
-        this.mongoSession = requireNonNull(mongoSession, "mongoSession is null");
+        this.sessionFactory = requireNonNull(sessionFactory, "sessionFactory is null");
     }
 
     @Override
     public List<HostAddress> getServerAddress()
     {
-        return mongoSession.getAddresses();
+        try (MongoSession session = sessionFactory.create()) {
+            return session.getAddresses();
+        }
     }
 }
