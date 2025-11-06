@@ -56,7 +56,7 @@ public class HudiSplitFactory
                     fileSize,
                     fileSize,
                     fileStatus.modificationTime(),
-                    hudiTableHandle.getRegularPredicates(),
+                    hudiTableHandle.regularPredicates(),
                     partitionKeys,
                     hudiSplitWeightProvider.calculateSplitWeight(fileSize)));
         }
@@ -72,7 +72,7 @@ public class HudiSplitFactory
                     splitSize,
                     fileSize,
                     fileStatus.modificationTime(),
-                    hudiTableHandle.getRegularPredicates(),
+                    hudiTableHandle.regularPredicates(),
                     partitionKeys,
                     hudiSplitWeightProvider.calculateSplitWeight(splitSize)));
             bytesRemaining -= splitSize;
@@ -84,7 +84,7 @@ public class HudiSplitFactory
                     bytesRemaining,
                     fileSize,
                     fileStatus.modificationTime(),
-                    hudiTableHandle.getRegularPredicates(),
+                    hudiTableHandle.regularPredicates(),
                     partitionKeys,
                     hudiSplitWeightProvider.calculateSplitWeight(bytesRemaining)));
         }

@@ -15,6 +15,7 @@ package io.trino.plugin.hudi;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystemFactory;
 import io.trino.metastore.Column;
@@ -129,6 +130,7 @@ public class HudiMetadata
                 table.get().getStorage().getLocation(),
                 COPY_ON_WRITE,
                 getPartitionKeyColumnHandles(table.get(), typeManager),
+                ImmutableSet.of(),
                 TupleDomain.all(),
                 TupleDomain.all());
     }
@@ -171,7 +173,7 @@ public class HudiMetadata
     public ConnectorTableMetadata getTableMetadata(ConnectorSession session, ConnectorTableHandle table)
     {
         HudiTableHandle hudiTableHandle = (HudiTableHandle) table;
-        return getTableMetadata(hudiTableHandle.getSchemaTableName(), getColumnsToHide(session));
+        return getTableMetadata(hudiTableHandle.schemaTableName(), getColumnsToHide(session));
     }
 
     @Override
@@ -192,7 +194,7 @@ public class HudiMetadata
                                 partitionColumnPredicates.getDomains().stream()
                                         .map(Map::keySet)
                                         .flatMap(Collection::stream)),
-                        handle.getConstraintColumns().stream())
+                        handle.constraintColumns().stream())
                 .collect(toImmutableSet());
 
         HudiTableHandle newHudiTableHandle = handle.applyPredicates(
@@ -200,15 +202,15 @@ public class HudiMetadata
                 partitionColumnPredicates,
                 regularColumnPredicates);
 
-        if (handle.getPartitionPredicates().equals(newHudiTableHandle.getPartitionPredicates())
-                && handle.getRegularPredicates().equals(newHudiTableHandle.getRegularPredicates())
-                && handle.getConstraintColumns().equals(newHudiTableHandle.getConstraintColumns())) {
+        if (handle.partitionPredicates().equals(newHudiTableHandle.partitionPredicates())
+                && handle.regularPredicates().equals(newHudiTableHandle.regularPredicates())
+                && handle.constraintColumns().equals(newHudiTableHandle.constraintColumns())) {
             return Optional.empty();
         }
 
         return Optional.of(new ConstraintApplicationResult<>(
                 newHudiTableHandle,
-                newHudiTableHandle.getRegularPredicates().transformKeys(ColumnHandle.class::cast),
+                newHudiTableHandle.regularPredicates().transformKeys(ColumnHandle.class::cast),
                 constraint.getExpression(),
                 false));
     }
@@ -217,8 +219,8 @@ public class HudiMetadata
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
         HudiTableHandle hudiTableHandle = (HudiTableHandle) tableHandle;
-        Table table = metastore.getTable(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())
-                .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())));
+        Table table = metastore.getTable(hudiTableHandle.schemaName(), hudiTableHandle.tableName())
+                .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.schemaName(), hudiTableHandle.tableName())));
         return hiveColumnHandles(table, typeManager, NANOSECONDS).stream()
                 .collect(toImmutableMap(HiveColumnHandle::getName, identity()));
     }
@@ -233,7 +235,7 @@ public class HudiMetadata
     public Optional<Object> getInfo(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
         HudiTableHandle table = (HudiTableHandle) tableHandle;
-        return Optional.of(new HudiTableInfo(table.getSchemaTableName(), table.getTableType().name(), table.getBasePath()));
+        return Optional.of(new HudiTableInfo(table.schemaTableName(), table.tableType().name(), table.basePath()));
     }
 
     @Override
@@ -274,17 +276,17 @@ public class HudiMetadata
     {
         HudiTableHandle hudiTableHandle = (HudiTableHandle) handle;
         if (isQueryPartitionFilterRequired(session)) {
-            if (!hudiTableHandle.getPartitionColumns().isEmpty()) {
-                Set<String> partitionColumns = hudiTableHandle.getPartitionColumns().stream()
+            if (!hudiTableHandle.partitionColumns().isEmpty()) {
+                Set<String> partitionColumns = hudiTableHandle.partitionColumns().stream()
                         .map(HiveColumnHandle::getName)
                         .collect(toImmutableSet());
-                Set<String> constraintColumns = hudiTableHandle.getConstraintColumns().stream()
+                Set<String> constraintColumns = hudiTableHandle.constraintColumns().stream()
                         .map(HiveColumnHandle::getBaseColumnName)
                         .collect(toImmutableSet());
                 if (Collections.disjoint(constraintColumns, partitionColumns)) {
                     throw new TrinoException(
                             QUERY_REJECTED,
-                            format("Filter required on %s for at least one of the partition columns: %s", hudiTableHandle.getSchemaTableName(), String.join(", ", partitionColumns)));
+                            format("Filter required on %s for at least one of the partition columns: %s", hudiTableHandle.schemaTableName(), String.join(", ", partitionColumns)));
                 }
             }
         }

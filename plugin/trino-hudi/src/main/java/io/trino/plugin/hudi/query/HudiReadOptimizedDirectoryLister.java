@@ -73,7 +73,7 @@ public class HudiReadOptimizedDirectoryLister
                                 hivePartitionName,
                                 partitionColumns,
                                 partitionColumnHandles,
-                                tableHandle.getPartitionPredicates(),
+                                tableHandle.partitionPredicates(),
                                 hiveTable,
                                 hiveMetastore)));
     }

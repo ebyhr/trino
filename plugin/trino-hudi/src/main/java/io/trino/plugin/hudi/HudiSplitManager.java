@@ -80,8 +80,8 @@ public class HudiSplitManager
     {
         HudiTableHandle hudiTableHandle = (HudiTableHandle) tableHandle;
         HiveMetastore metastore = transactionManager.get(transaction, session.getIdentity()).getMetastore();
-        Table table = metastore.getTable(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())
-                .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())));
+        Table table = metastore.getTable(hudiTableHandle.schemaName(), hudiTableHandle.tableName())
+                .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.schemaName(), hudiTableHandle.tableName())));
 
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table, typeManager);
         Map<String, HiveColumnHandle> partitionColumnHandles = partitionColumns.stream()
@@ -110,10 +110,10 @@ public class HudiSplitManager
         }
 
         return metastore.getPartitionNamesByFilter(
-                        table.getSchemaName(),
-                        table.getTableName(),
+                        table.schemaName(),
+                        table.tableName(),
                         partitionColumns.stream().map(HiveColumnHandle::getName).collect(Collectors.toList()),
-                        computePartitionKeyFilter(partitionColumns, table.getPartitionPredicates()))
-                .orElseThrow(() -> new TableNotFoundException(table.getSchemaTableName()));
+                        computePartitionKeyFilter(partitionColumns, table.partitionPredicates()))
+                .orElseThrow(() -> new TableNotFoundException(table.schemaTableName()));
     }
 }

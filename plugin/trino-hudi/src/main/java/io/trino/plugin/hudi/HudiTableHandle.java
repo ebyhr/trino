@@ -13,9 +13,8 @@
  */
 package io.trino.plugin.hudi;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.spi.connector.ConnectorTableHandle;
@@ -26,107 +25,37 @@ import org.apache.hudi.common.model.HoodieTableType;
 import java.util.List;
 import java.util.Set;
 
-import static io.trino.spi.connector.SchemaTableName.schemaTableName;
 import static java.util.Objects.requireNonNull;
 
-public class HudiTableHandle
+/**
+ * @param constraintColumns Used only for validation when config property hudi.query-partition-filter-required is enabled
+ */
+public record HudiTableHandle(
+        String schemaName,
+        String tableName,
+        String basePath,
+        HoodieTableType tableType,
+        List<HiveColumnHandle> partitionColumns,
+        @JsonIgnore Set<HiveColumnHandle> constraintColumns, // do not serialize constraint columns as they are not needed on workers
+        TupleDomain<HiveColumnHandle> partitionPredicates,
+        TupleDomain<HiveColumnHandle> regularPredicates)
         implements ConnectorTableHandle
 {
-    private final String schemaName;
-    private final String tableName;
-    private final String basePath;
-    private final HoodieTableType tableType;
-    private final List<HiveColumnHandle> partitionColumns;
-    // Used only for validation when config property hudi.query-partition-filter-required is enabled
-    private final Set<HiveColumnHandle> constraintColumns;
-    private final TupleDomain<HiveColumnHandle> partitionPredicates;
-    private final TupleDomain<HiveColumnHandle> regularPredicates;
-
-    @JsonCreator
-    public HudiTableHandle(
-            @JsonProperty("schemaName") String schemaName,
-            @JsonProperty("tableName") String tableName,
-            @JsonProperty("basePath") String basePath,
-            @JsonProperty("tableType") HoodieTableType tableType,
-            @JsonProperty("partitionColumns") List<HiveColumnHandle> partitionColumns,
-            @JsonProperty("partitionPredicates") TupleDomain<HiveColumnHandle> partitionPredicates,
-            @JsonProperty("regularPredicates") TupleDomain<HiveColumnHandle> regularPredicates)
+    public HudiTableHandle
     {
-        this(schemaName, tableName, basePath, tableType, partitionColumns, ImmutableSet.of(), partitionPredicates, regularPredicates);
+        requireNonNull(schemaName, "schemaName is null");
+        requireNonNull(tableName, "tableName is null");
+        requireNonNull(basePath, "basePath is null");
+        requireNonNull(tableType, "tableType is null");
+        partitionColumns = ImmutableList.copyOf(partitionColumns);
+        constraintColumns = ImmutableSet.copyOf(constraintColumns);
+        requireNonNull(partitionPredicates, "partitionPredicates is null");
+        requireNonNull(regularPredicates, "regularPredicates is null");
     }
 
-    public HudiTableHandle(
-            String schemaName,
-            String tableName,
-            String basePath,
-            HoodieTableType tableType,
-            List<HiveColumnHandle> partitionColumns,
-            Set<HiveColumnHandle> constraintColumns,
-            TupleDomain<HiveColumnHandle> partitionPredicates,
-            TupleDomain<HiveColumnHandle> regularPredicates)
+    public SchemaTableName schemaTableName()
     {
-        this.schemaName = requireNonNull(schemaName, "schemaName is null");
-        this.tableName = requireNonNull(tableName, "tableName is null");
-        this.basePath = requireNonNull(basePath, "basePath is null");
-        this.tableType = requireNonNull(tableType, "tableType is null");
-        this.partitionColumns = requireNonNull(partitionColumns, "partitionColumns is null");
-        this.constraintColumns = requireNonNull(constraintColumns, "constraintColumns is null");
-        this.partitionPredicates = requireNonNull(partitionPredicates, "partitionPredicates is null");
-        this.regularPredicates = requireNonNull(regularPredicates, "regularPredicates is null");
-    }
-
-    @JsonProperty
-    public String getSchemaName()
-    {
-        return schemaName;
-    }
-
-    @JsonProperty
-    public String getTableName()
-    {
-        return tableName;
-    }
-
-    @JsonProperty
-    public String getBasePath()
-    {
-        return basePath;
-    }
-
-    @JsonProperty
-    public HoodieTableType getTableType()
-    {
-        return tableType;
-    }
-
-    @JsonProperty
-    public TupleDomain<HiveColumnHandle> getPartitionPredicates()
-    {
-        return partitionPredicates;
-    }
-
-    @JsonProperty
-    public List<HiveColumnHandle> getPartitionColumns()
-    {
-        return partitionColumns;
-    }
-
-    // do not serialize constraint columns as they are not needed on workers
-    @JsonIgnore
-    public Set<HiveColumnHandle> getConstraintColumns()
-    {
-        return constraintColumns;
-    }
-
-    @JsonProperty
-    public TupleDomain<HiveColumnHandle> getRegularPredicates()
-    {
-        return regularPredicates;
-    }
-
-    public SchemaTableName getSchemaTableName()
-    {
-        return schemaTableName(schemaName, tableName);
+        return SchemaTableName.schemaTableName(schemaName, tableName);
     }
 
     HudiTableHandle applyPredicates(
@@ -148,6 +77,6 @@ public class HudiTableHandle
     @Override
     public String toString()
     {
-        return getSchemaTableName().toString();
+        return schemaTableName().toString();
     }
 }
