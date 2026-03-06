@@ -87,7 +87,6 @@ public class ConnectorIdentity
         principal.ifPresent(principal -> sb.append(", principal=").append(principal));
         sb.append(", enabledSystemroles=").append(enabledSystemRoles);
         connectorRole.ifPresent(role -> sb.append(", connectorRole=").append(role));
-        sb.append(", extraCredentials=").append(extraCredentials.keySet());
         sb.append('}');
         return sb.toString();
     }
