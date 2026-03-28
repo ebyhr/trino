@@ -13,88 +13,14 @@
  */
 package io.trino.plugin.iceberg;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.iceberg.Metrics;
-
-import java.nio.ByteBuffer;
-import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
-public class MetricsWrapper
+public record MetricsWrapper(Metrics metrics)
 {
-    private final Metrics metrics;
-
-    @JsonCreator
-    public MetricsWrapper(
-            @JsonProperty("recordCount") Long recordCount,
-            @JsonProperty("columnSizes") Map<Integer, Long> columnSizes,
-            @JsonProperty("valueCounts") Map<Integer, Long> valueCounts,
-            @JsonProperty("nullValueCounts") Map<Integer, Long> nullValueCounts,
-            @JsonProperty("nanValueCounts") Map<Integer, Long> nanValueCounts,
-            @JsonProperty("lowerBounds") Map<Integer, ByteBuffer> lowerBounds,
-            @JsonProperty("upperBounds") Map<Integer, ByteBuffer> upperBounds)
+    public MetricsWrapper
     {
-        this(new Metrics(
-                recordCount,
-                columnSizes,
-                valueCounts,
-                nullValueCounts,
-                nanValueCounts,
-                lowerBounds,
-                upperBounds));
-    }
-
-    public MetricsWrapper(Metrics metrics)
-    {
-        this.metrics = requireNonNull(metrics, "metrics is null");
-    }
-
-    public Metrics metrics()
-    {
-        return metrics;
-    }
-
-    @JsonProperty
-    public Long recordCount()
-    {
-        return metrics.recordCount();
-    }
-
-    @JsonProperty
-    public Map<Integer, Long> columnSizes()
-    {
-        return metrics.columnSizes();
-    }
-
-    @JsonProperty
-    public Map<Integer, Long> valueCounts()
-    {
-        return metrics.valueCounts();
-    }
-
-    @JsonProperty
-    public Map<Integer, Long> nullValueCounts()
-    {
-        return metrics.nullValueCounts();
-    }
-
-    @JsonProperty
-    public Map<Integer, Long> nanValueCounts()
-    {
-        return metrics.nanValueCounts();
-    }
-
-    @JsonProperty
-    public Map<Integer, ByteBuffer> lowerBounds()
-    {
-        return metrics.lowerBounds();
-    }
-
-    @JsonProperty
-    public Map<Integer, ByteBuffer> upperBounds()
-    {
-        return metrics.upperBounds();
+        requireNonNull(metrics, "metrics is null");
     }
 }
