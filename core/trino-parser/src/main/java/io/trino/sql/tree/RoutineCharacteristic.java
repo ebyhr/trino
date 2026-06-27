@@ -22,7 +22,8 @@ public abstract sealed class RoutineCharacteristic
                 LanguageCharacteristic,
                 NullInputCharacteristic,
                 PropertiesCharacteristic,
-                SecurityCharacteristic
+                SecurityCharacteristic,
+                SpecificName
 {
     protected RoutineCharacteristic(NodeLocation location)
     {

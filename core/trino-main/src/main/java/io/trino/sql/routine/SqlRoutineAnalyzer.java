@@ -61,6 +61,7 @@ import io.trino.sql.tree.ReturnStatement;
 import io.trino.sql.tree.ReturnsClause;
 import io.trino.sql.tree.SecurityCharacteristic;
 import io.trino.sql.tree.SecurityCharacteristic.Security;
+import io.trino.sql.tree.SpecificName;
 import io.trino.sql.tree.VariableDeclaration;
 import io.trino.sql.tree.WhileStatement;
 import io.trino.type.TypeCoercion;
@@ -128,6 +129,7 @@ public class SqlRoutineAnalyzer
         }
 
         validateSecurity(function);
+        validateSpecificName(function);
 
         return builder.build();
     }
@@ -321,6 +323,18 @@ public class SqlRoutineAnalyzer
     private static void validateSecurity(FunctionSpecification function)
     {
         isRunAsInvoker(function);
+    }
+
+    private static void validateSpecificName(FunctionSpecification function)
+    {
+        List<SpecificName> specificNames = function.getRoutineCharacteristics().stream()
+                .filter(SpecificName.class::isInstance)
+                .map(SpecificName.class::cast)
+                .collect(toImmutableList());
+
+        if (specificNames.size() > 1) {
+            throw semanticException(SYNTAX_ERROR, specificNames.get(1), "Multiple specific name clauses specified");
+        }
     }
 
     private static Optional<String> getComment(FunctionSpecification function)

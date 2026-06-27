@@ -290,6 +290,7 @@ import io.trino.sql.tree.SimpleIntervalQualifier;
 import io.trino.sql.tree.SingleColumn;
 import io.trino.sql.tree.SkipTo;
 import io.trino.sql.tree.SortItem;
+import io.trino.sql.tree.SpecificName;
 import io.trino.sql.tree.StartTransaction;
 import io.trino.sql.tree.Statement;
 import io.trino.sql.tree.StaticMethodCall;
@@ -4107,6 +4108,12 @@ class AstBuilder
     public Node visitLanguageCharacteristic(SqlBaseParser.LanguageCharacteristicContext context)
     {
         return new LanguageCharacteristic(getLocation(context), (Identifier) visit(context.identifier()));
+    }
+
+    @Override
+    public Node visitSpecificName(SqlBaseParser.SpecificNameContext context)
+    {
+        return new SpecificName(getLocation(context), getQualifiedName(context.qualifiedName()));
     }
 
     @Override

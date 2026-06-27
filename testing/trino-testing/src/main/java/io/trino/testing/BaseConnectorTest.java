@@ -7680,6 +7680,21 @@ public abstract class BaseConnectorTest
         assertThat(query("SELECT " + wrappingFunction + "()")).failure()
                 .hasMessage("line 1:8: Function '" + wrappedFunction + "' not registered")
                 .hasErrorCode(FUNCTION_NOT_FOUND);
+
+        // verify SPECIFIC clause is accepted and round-trips through SHOW CREATE FUNCTION
+        String specificFunction = "specific_" + randomNameSuffix();
+        String specificName = specificFunction + "_int";
+        assertUpdate("CREATE FUNCTION " + specificFunction + "(x integer) RETURNS bigint SPECIFIC " + specificName + " RETURN x * 2");
+        assertQuery("SELECT " + specificFunction + "(21)", "SELECT 42");
+        assertThat(computeActual("SHOW CREATE FUNCTION " + specificFunction).getOnlyValue())
+                .isEqualTo(
+                        """
+                        CREATE FUNCTION %s(x integer)
+                        RETURNS bigint
+                        SPECIFIC %s
+                        RETURN (x * 2)
+                        """.strip().formatted(specificFunction, specificName));
+        assertUpdate("DROP FUNCTION " + specificFunction + "(integer)");
     }
 
     @Test

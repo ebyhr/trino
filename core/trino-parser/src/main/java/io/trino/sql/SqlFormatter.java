@@ -169,6 +169,7 @@ import io.trino.sql.tree.ShowSession;
 import io.trino.sql.tree.ShowStats;
 import io.trino.sql.tree.ShowTables;
 import io.trino.sql.tree.SingleColumn;
+import io.trino.sql.tree.SpecificName;
 import io.trino.sql.tree.StartTransaction;
 import io.trino.sql.tree.StringLiteral;
 import io.trino.sql.tree.Table;
@@ -2502,6 +2503,14 @@ public final class SqlFormatter
         protected Void visitDeterministicCharacteristic(DeterministicCharacteristic node, Integer indent)
         {
             append(indent, (node.isDeterministic() ? "" : "NOT ") + "DETERMINISTIC");
+            return null;
+        }
+
+        @Override
+        protected Void visitSpecificName(SpecificName node, Integer indent)
+        {
+            append(indent, "SPECIFIC ")
+                    .append(formatName(node.getName()));
             return null;
         }
 

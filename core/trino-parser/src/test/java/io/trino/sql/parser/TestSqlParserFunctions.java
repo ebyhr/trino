@@ -22,6 +22,7 @@ import io.trino.sql.tree.ParameterDeclaration;
 import io.trino.sql.tree.PropertiesCharacteristic;
 import io.trino.sql.tree.Property;
 import io.trino.sql.tree.ReturnsClause;
+import io.trino.sql.tree.SpecificName;
 import io.trino.sql.tree.StringLiteral;
 import org.junit.jupiter.api.Test;
 
@@ -90,5 +91,46 @@ public class TestSqlParserFunctions
                 AS $$ what $$
                 """)
                 .withMessage("line 5:4: Function definition must start with a newline after opening quotes");
+    }
+
+    @Test
+    public void testSpecificName()
+    {
+        assertThat(statement(
+                """
+                CREATE FUNCTION hello(s varchar)
+                RETURNS varchar
+                SPECIFIC hello_varchar
+                LANGUAGE PYTHON
+                WITH (handler = 'hello')
+                AS $$
+                def hello(s):
+                    return 'Hello, ' + s + '!'
+                $$
+                """))
+                .isEqualTo(new CreateFunction(
+                        location(1, 1),
+                        new FunctionSpecification(
+                                location(1, 8),
+                                qualifiedName(location(1, 17), "hello"),
+                                ImmutableList.of(new ParameterDeclaration(
+                                        location(1, 23),
+                                        Optional.of(identifier(location(1, 23), "s")),
+                                        simpleType(location(1, 25), "varchar"))),
+                                new ReturnsClause(location(2, 1), simpleType(location(2, 9), "varchar")),
+                                ImmutableList.of(
+                                        new SpecificName(location(3, 1), qualifiedName(location(3, 10), "hello_varchar")),
+                                        new LanguageCharacteristic(location(4, 1), identifier(location(4, 10), "PYTHON")),
+                                        new PropertiesCharacteristic(location(5, 1), ImmutableList.of(new Property(
+                                                location(5, 7),
+                                                identifier(location(5, 7), "handler"),
+                                                new StringLiteral(location(5, 17), "hello"))))),
+                                Optional.empty(),
+                                Optional.of(new StringLiteral(location(6, 4),
+                                        """
+                                        def hello(s):
+                                            return 'Hello, ' + s + '!'
+                                        """))),
+                        false));
     }
 }
