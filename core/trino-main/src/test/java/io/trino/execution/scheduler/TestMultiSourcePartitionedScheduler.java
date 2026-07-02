@@ -574,6 +574,7 @@ public class TestMultiSourcePartitionedScheduler
                         tableScanOne.getOutputSymbols(),
                         remote.getOutputSymbols(),
                         false,
+                        false,
                         Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),

@@ -319,6 +319,7 @@ public class TestSchedulingUtils
                 left.getOutputSymbols(),
                 right.getOutputSymbols(),
                 false,
+                false,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

@@ -1134,6 +1134,7 @@ public class UnaliasSymbolReferences
                             newLeftOutputSymbols,
                             newRightOutputSymbols,
                             node.isMaySkipOutputDuplicates(),
+                            node.isEnforceUniqueMatch(),
                             newFilter,
                             node.getDistributionType(),
                             node.isSpillable(),

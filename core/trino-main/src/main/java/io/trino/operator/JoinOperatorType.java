@@ -25,48 +25,55 @@ public class JoinOperatorType
 {
     private final io.trino.operator.join.JoinType type;
     private final boolean outputSingleMatch;
+    private final boolean enforceUniqueMatch;
     private final boolean waitForBuild;
 
-    public static JoinOperatorType ofJoinNodeType(JoinType joinNodeType, boolean outputSingleMatch, boolean waitForBuild)
+    public static JoinOperatorType ofJoinNodeType(JoinType joinNodeType, boolean outputSingleMatch, boolean enforceUniqueMatch, boolean waitForBuild)
     {
         return switch (joinNodeType) {
-            case INNER -> innerJoin(outputSingleMatch, waitForBuild);
-            case LEFT -> probeOuterJoin(outputSingleMatch);
+            case INNER -> innerJoin(outputSingleMatch, enforceUniqueMatch, waitForBuild);
+            case LEFT -> probeOuterJoin(outputSingleMatch, enforceUniqueMatch);
             case RIGHT -> lookupOuterJoin(waitForBuild);
             case FULL -> fullOuterJoin();
         };
     }
 
-    public static JoinOperatorType innerJoin(boolean outputSingleMatch, boolean waitForBuild)
+    public static JoinOperatorType innerJoin(boolean outputSingleMatch, boolean enforceUniqueMatch, boolean waitForBuild)
     {
-        return new JoinOperatorType(INNER, outputSingleMatch, waitForBuild);
+        return new JoinOperatorType(INNER, outputSingleMatch, enforceUniqueMatch, waitForBuild);
     }
 
-    public static JoinOperatorType probeOuterJoin(boolean outputSingleMatch)
+    public static JoinOperatorType probeOuterJoin(boolean outputSingleMatch, boolean enforceUniqueMatch)
     {
-        return new JoinOperatorType(PROBE_OUTER, outputSingleMatch, false);
+        return new JoinOperatorType(PROBE_OUTER, outputSingleMatch, enforceUniqueMatch, false);
     }
 
     public static JoinOperatorType lookupOuterJoin(boolean waitForBuild)
     {
-        return new JoinOperatorType(LOOKUP_OUTER, false, waitForBuild);
+        return new JoinOperatorType(LOOKUP_OUTER, false, false, waitForBuild);
     }
 
     public static JoinOperatorType fullOuterJoin()
     {
-        return new JoinOperatorType(FULL_OUTER, false, false);
+        return new JoinOperatorType(FULL_OUTER, false, false, false);
     }
 
-    private JoinOperatorType(io.trino.operator.join.JoinType type, boolean outputSingleMatch, boolean waitForBuild)
+    private JoinOperatorType(io.trino.operator.join.JoinType type, boolean outputSingleMatch, boolean enforceUniqueMatch, boolean waitForBuild)
     {
         this.type = requireNonNull(type, "type is null");
         this.outputSingleMatch = outputSingleMatch;
+        this.enforceUniqueMatch = enforceUniqueMatch;
         this.waitForBuild = waitForBuild;
     }
 
     public boolean isOutputSingleMatch()
     {
         return outputSingleMatch;
+    }
+
+    public boolean isEnforceUniqueMatch()
+    {
+        return enforceUniqueMatch;
     }
 
     public boolean isWaitForBuild()

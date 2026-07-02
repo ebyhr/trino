@@ -83,7 +83,7 @@ public final class JoinTestUtils
             boolean hasFilter)
     {
         return join(
-                innerJoin(outputSingleMatch, false),
+                innerJoin(outputSingleMatch, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,

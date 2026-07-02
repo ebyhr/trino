@@ -267,7 +267,7 @@ class RelationPlanner
     public static JoinType mapJoinType(Join.Type joinType)
     {
         return switch (joinType) {
-            case CROSS, IMPLICIT, INNER -> JoinType.INNER;
+            case CROSS, IMPLICIT, INNER, JOIN_TO_ONE -> JoinType.INNER;
             case LEFT -> JoinType.LEFT;
             case RIGHT -> JoinType.RIGHT;
             case FULL -> JoinType.FULL;
@@ -1025,6 +1025,7 @@ class RelationPlanner
                 leftPlanBuilder.getRoot().getOutputSymbols(),
                 rightPlanBuilder.getRoot().getOutputSymbols(),
                 false,
+                type == Join.Type.JOIN_TO_ONE,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -1066,6 +1067,7 @@ class RelationPlanner
                     leftPlanBuilder.getRoot().getOutputSymbols(),
                     rightPlanBuilder.getRoot().getOutputSymbols(),
                     false,
+                    type == Join.Type.JOIN_TO_ONE,
                     Optional.of(IrUtils.and(complexJoinExpressions.stream()
                             .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                             .collect(Collectors.toList()))),
@@ -1178,6 +1180,7 @@ class RelationPlanner
                 clauses.build(),
                 leftCoercion.getOutputSymbols(),
                 rightCoercion.getOutputSymbols(),
+                false,
                 false,
                 Optional.empty(),
                 Optional.empty(),
@@ -1329,6 +1332,7 @@ class RelationPlanner
                 ImmutableList.of(),
                 leftPlanBuilder.getRoot().getOutputSymbols(),
                 rightPlanBuilder.getRoot().getOutputSymbols(),
+                false,
                 false,
                 Optional.of(IrUtils.and(predicates.stream()
                         .map(expression -> coerceIfNecessary(analysis, expression, candidateTranslations.rewrite(expression)))

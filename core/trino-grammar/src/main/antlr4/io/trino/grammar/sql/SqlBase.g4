@@ -373,7 +373,7 @@ selectItem
 relation
     : left=relation
       ( CROSS JOIN right=sampledRelation
-      | joinType JOIN rightRelation=relation joinCriteria
+      | joinType JOIN joinToOne? rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=sampledRelation
       )                                                     #joinRelation
     | sampledRelation                                       #relationDefault
@@ -384,6 +384,10 @@ joinType
     | LEFT OUTER?
     | RIGHT OUTER?
     | FULL OUTER?
+    ;
+
+joinToOne
+    : TO ONE
     ;
 
 joinCriteria

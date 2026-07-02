@@ -100,7 +100,9 @@ public class DetermineJoinDistributionType
         List<PlanNodeWithCost> possibleJoinNodes = new ArrayList<>();
 
         addJoinsWithDifferentDistributions(joinNode, possibleJoinNodes, context);
-        addJoinsWithDifferentDistributions(joinNode.flipChildren(), possibleJoinNodes, context);
+        if (!joinNode.isEnforceUniqueMatch()) {
+            addJoinsWithDifferentDistributions(joinNode.flipChildren(), possibleJoinNodes, context);
+        }
 
         if (possibleJoinNodes.stream().anyMatch(result -> result.getCost().hasUnknownComponents()) || possibleJoinNodes.isEmpty()) {
             return getSizeBasedJoin(joinNode, context);
@@ -122,8 +124,8 @@ public class DetermineJoinDistributionType
         }
 
         boolean isLeftSideSmall = getSourceTablesSizeInBytes(joinNode.getLeft(), context.getLookup(), context.getStatsProvider()) <= joinMaxBroadcastTableSize.toBytes();
-        JoinNode flippedJoin = joinNode.flipChildren();
-        if (isLeftSideSmall && !mustPartition(flippedJoin)) {
+        JoinNode flippedJoin = joinNode.isEnforceUniqueMatch() ? null : joinNode.flipChildren();
+        if (flippedJoin != null && isLeftSideSmall && !mustPartition(flippedJoin)) {
             // choose join left side with small source tables as replicated build side
             return flippedJoin.withDistributionType(REPLICATED);
         }
@@ -133,7 +135,7 @@ public class DetermineJoinDistributionType
             return joinNode.withDistributionType(PARTITIONED);
         }
 
-        if (isLeftSideSmall) {
+        if (flippedJoin != null && isLeftSideSmall) {
             // left side is small enough, but must be partitioned
             return flippedJoin.withDistributionType(PARTITIONED);
         }
@@ -150,7 +152,7 @@ public class DetermineJoinDistributionType
             return joinNode.withDistributionType(PARTITIONED);
         }
 
-        if (leftOutputSizeInBytes * SIZE_DIFFERENCE_THRESHOLD < rightOutputSizeInBytes && !mustReplicate(flippedJoin, context)) {
+        if (flippedJoin != null && leftOutputSizeInBytes * SIZE_DIFFERENCE_THRESHOLD < rightOutputSizeInBytes && !mustReplicate(flippedJoin, context)) {
             return flippedJoin.withDistributionType(PARTITIONED);
         }
 

@@ -265,6 +265,7 @@ public class PushInequalityFilterExpressionBelowJoinRuleSet
                 originalJoinNode.getLeftOutputSymbols(),
                 concatToList(originalJoinNode.getRightOutputSymbols(), newJoinRightOutputSymbols),
                 originalJoinNode.isMaySkipOutputDuplicates(),
+                originalJoinNode.isEnforceUniqueMatch(),
                 newJoinFilter,
                 originalJoinNode.getDistributionType(),
                 originalJoinNode.isSpillable(),

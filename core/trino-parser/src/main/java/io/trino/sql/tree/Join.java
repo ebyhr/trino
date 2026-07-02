@@ -28,7 +28,7 @@ public class Join
 {
     public enum Type
     {
-        CROSS, INNER, LEFT, RIGHT, FULL, IMPLICIT
+        CROSS, INNER, JOIN_TO_ONE, LEFT, RIGHT, FULL, IMPLICIT
     }
 
     public Join(Type type, Relation left, Relation right, Optional<JoinCriteria> criteria)

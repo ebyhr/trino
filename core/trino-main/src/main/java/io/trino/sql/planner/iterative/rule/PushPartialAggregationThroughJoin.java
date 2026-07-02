@@ -304,6 +304,7 @@ public class PushPartialAggregationThroughJoin
                 leftChild.getOutputSymbols(),
                 rightChild.getOutputSymbols(),
                 child.isMaySkipOutputDuplicates(),
+                child.isEnforceUniqueMatch(),
                 child.getFilter(),
                 child.getDistributionType(),
                 child.isSpillable(),

@@ -707,6 +707,7 @@ public class TestSourcePartitionedScheduler
                         tableScan.getOutputSymbols(),
                         remote.getOutputSymbols(),
                         false,
+                        false,
                         Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),

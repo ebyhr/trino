@@ -127,6 +127,7 @@ public class TransformUncorrelatedSubqueryToJoin
                 parent.getInput().getOutputSymbols(),
                 parent.getSubquery().getOutputSymbols(),
                 false,
+                false,
                 filter.equals(TRUE) ? Optional.empty() : Optional.of(filter),
                 Optional.empty(),
                 Optional.empty(),

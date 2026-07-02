@@ -359,6 +359,7 @@ public class TestEliminateCrossJoins
                 left.getOutputSymbols(),
                 right.getOutputSymbols(),
                 false,
+                false,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

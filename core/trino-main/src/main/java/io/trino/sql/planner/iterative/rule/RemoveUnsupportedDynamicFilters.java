@@ -155,6 +155,7 @@ public class RemoveUnsupportedDynamicFilters
                         node.getLeftOutputSymbols(),
                         node.getRightOutputSymbols(),
                         node.isMaySkipOutputDuplicates(),
+                        node.isEnforceUniqueMatch(),
                         filter,
                         node.getDistributionType(),
                         node.isSpillable(),

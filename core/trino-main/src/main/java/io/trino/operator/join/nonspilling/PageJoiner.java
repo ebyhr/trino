@@ -23,6 +23,7 @@ import io.trino.operator.join.JoinType;
 import io.trino.operator.join.LookupSource;
 import io.trino.operator.join.nonspilling.JoinProbe.JoinProbeFactory;
 import io.trino.spi.Page;
+import io.trino.spi.TrinoException;
 import io.trino.spi.type.Type;
 import jakarta.annotation.Nullable;
 
@@ -40,6 +41,7 @@ import static io.trino.operator.WorkProcessor.TransformationState.ofResult;
 import static io.trino.operator.WorkProcessor.TransformationState.yielded;
 import static io.trino.operator.join.JoinType.FULL_OUTER;
 import static io.trino.operator.join.JoinType.PROBE_OUTER;
+import static io.trino.spi.StandardErrorCode.SUBQUERY_MULTIPLE_ROWS;
 import static java.util.Objects.requireNonNull;
 
 public class PageJoiner
@@ -52,6 +54,7 @@ public class PageJoiner
     private final LookupJoinPageBuilder pageBuilder;
     private final boolean probeOnOuterSide;
     private final boolean outputSingleMatch;
+    private final boolean enforceUniqueMatch;
 
     @Nullable
     private LookupSource lookupSource;
@@ -66,6 +69,7 @@ public class PageJoiner
             List<Type> buildOutputTypes,
             JoinType joinType,
             boolean outputSingleMatch,
+            boolean enforceUniqueMatch,
             JoinProbeFactory joinProbeFactory,
             ListenableFuture<LookupSource> lookupSource,
             JoinStatisticsCounter statisticsCounter)
@@ -76,6 +80,7 @@ public class PageJoiner
         this.yieldSignal = operatorContext.getDriverContext().getYieldSignal();
         this.pageBuilder = new LookupJoinPageBuilder(buildOutputTypes);
         this.outputSingleMatch = outputSingleMatch;
+        this.enforceUniqueMatch = enforceUniqueMatch;
 
         // Cannot use switch case here, because javac will synthesize an inner class and cause IllegalAccessError
         probeOnOuterSide = joinType == PROBE_OUTER || joinType == FULL_OUTER;
@@ -216,6 +221,10 @@ public class PageJoiner
             else {
                 // get next position on lookup side for this probe row
                 joinPosition = lookupSource.getNextJoinPosition(joinPosition, probe.getPosition(), probe.getPage());
+                if (enforceUniqueMatch && currentProbePositionProducedRow && joinPosition >= 0 &&
+                        lookupSource.isJoinPositionEligible(joinPosition, probe.getPosition(), probe.getPage())) {
+                    throw new TrinoException(SUBQUERY_MULTIPLE_ROWS, "JOIN TO ONE matched more than one row from the right side");
+                }
             }
 
             if (yieldSignal.isSet() || pageBuilder.isFull()) {

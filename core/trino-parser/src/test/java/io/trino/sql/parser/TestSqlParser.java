@@ -5246,6 +5246,28 @@ public class TestSqlParser
     }
 
     @Test
+    public void testJoinToOne()
+    {
+        assertStatement("SELECT * FROM a JOIN TO ONE b ON a.id = b.id",
+                simpleQuery(
+                        selectList(new AllColumns()),
+                        new Join(
+                                Join.Type.JOIN_TO_ONE,
+                                new Table(QualifiedName.of("a")),
+                                new Table(QualifiedName.of("b")),
+                                Optional.of(new JoinOn(equal(nameReference("a", "id"), nameReference("b", "id")))))));
+
+        assertStatement("SELECT * FROM a INNER JOIN TO ONE b ON a.id = b.id",
+                simpleQuery(
+                        selectList(new AllColumns()),
+                        new Join(
+                                Join.Type.JOIN_TO_ONE,
+                                new Table(QualifiedName.of("a")),
+                                new Table(QualifiedName.of("b")),
+                                Optional.of(new JoinOn(equal(nameReference("a", "id"), nameReference("b", "id")))))));
+    }
+
+    @Test
     public void testJoinPrecedence()
     {
         assertStatement("SELECT * FROM a CROSS JOIN b LEFT JOIN c ON true",

@@ -87,6 +87,7 @@ public class TransformCorrelatedJoinToJoin
                 correlatedJoinNode.getInput().getOutputSymbols(),
                 correlatedJoinNode.getSubquery().getOutputSymbols(),
                 false,
+                false,
                 filter.equals(TRUE) ? Optional.empty() : Optional.of(filter),
                 Optional.empty(),
                 Optional.empty(),

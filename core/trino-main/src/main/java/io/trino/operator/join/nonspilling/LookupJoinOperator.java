@@ -53,6 +53,7 @@ public class LookupJoinOperator
             List<Type> buildOutputTypes,
             JoinType joinType,
             boolean outputSingleMatch,
+            boolean enforceUniqueMatch,
             boolean waitForBuild,
             PartitionedLookupSourceFactory lookupSourceFactory,
             JoinProbeFactory joinProbeFactory,
@@ -68,6 +69,7 @@ public class LookupJoinOperator
                 buildOutputTypes,
                 joinType,
                 outputSingleMatch,
+                enforceUniqueMatch,
                 joinProbeFactory,
                 lookupSourceFuture,
                 statisticsCounter);

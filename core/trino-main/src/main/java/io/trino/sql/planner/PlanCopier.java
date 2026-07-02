@@ -168,6 +168,7 @@ public final class PlanCopier
                     node.getLeftOutputSymbols(),
                     node.getRightOutputSymbols(),
                     node.isMaySkipOutputDuplicates(),
+                    node.isEnforceUniqueMatch(),
                     node.getFilter(),
                     node.getDistributionType(),
                     node.isSpillable(),

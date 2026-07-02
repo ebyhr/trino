@@ -180,6 +180,7 @@ public class EliminateCrossJoins
                     result.getOutputSymbols(),
                     rightNode.getOutputSymbols(),
                     false,
+                    false,
                     Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),

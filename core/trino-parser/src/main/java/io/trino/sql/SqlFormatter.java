@@ -886,6 +886,9 @@ public final class SqlFormatter
             if (node.getType() == Join.Type.IMPLICIT) {
                 append(indent, ", ");
             }
+            else if (node.getType() == Join.Type.JOIN_TO_ONE) {
+                append(indent, "INNER JOIN TO ONE ");
+            }
             else {
                 append(indent, type).append(" JOIN ");
             }

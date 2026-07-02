@@ -200,6 +200,7 @@ public class AdaptiveReorderPartitionedJoin
                 flippedJoinNode.getLeftOutputSymbols(),
                 flippedJoinNode.getRightOutputSymbols(),
                 flippedJoinNode.isMaySkipOutputDuplicates(),
+                flippedJoinNode.isEnforceUniqueMatch(),
                 flippedJoinNode.getFilter(),
                 flippedJoinNode.getDistributionType(),
                 flippedJoinNode.isSpillable(),

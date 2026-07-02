@@ -242,6 +242,7 @@ public class TransformCorrelatedInPredicateToJoin
                 probeSide.getOutputSymbols(),
                 buildSide.getOutputSymbols(),
                 false,
+                false,
                 Optional.of(joinExpression),
                 Optional.empty(),
                 Optional.empty(),

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.parallel.Execution;
 
 import java.util.List;
 
+import static io.trino.spi.StandardErrorCode.SUBQUERY_MULTIPLE_ROWS;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static io.trino.sql.planner.assertions.PlanMatchPattern.aggregation;
 import static io.trino.sql.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -374,5 +375,42 @@ public class TestJoin
                 """))
                 .skippingTypesCheck()
                 .matches("VALUES ('a', 'x', 'a', 'x'), ('b', null, 'b', null), (null, 'z', null, 'z')");
+    }
+
+    @Test
+    void testJoinToOne()
+    {
+        // Basic JOIN TO ONE: each left row matches exactly one right row
+        assertThat(assertions.query(
+                """
+                SELECT l.id, r.val
+                FROM (VALUES 1, 2, 3) l(id)
+                JOIN TO ONE (VALUES (1, 'a'), (2, 'b'), (3, 'c')) r(id, val)
+                  ON l.id = r.id
+                """))
+                .skippingTypesCheck()
+                .matches("VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+
+        // INNER JOIN TO ONE is equivalent
+        assertThat(assertions.query(
+                """
+                SELECT l.id, r.val
+                FROM (VALUES 1, 2) l(id)
+                INNER JOIN TO ONE (VALUES (1, 'x'), (2, 'y')) r(id, val)
+                  ON l.id = r.id
+                """))
+                .skippingTypesCheck()
+                .matches("VALUES (1, 'x'), (2, 'y')");
+
+        // Fails when left row matches more than one right row
+        assertThat(assertions.query(
+                """
+                SELECT l.id
+                FROM (VALUES 1) l(id)
+                JOIN TO ONE (VALUES (1, 'a'), (1, 'b')) r(id, val)
+                  ON l.id = r.id
+                """))
+                .failure()
+                .hasErrorCode(SUBQUERY_MULTIPLE_ROWS);
     }
 }

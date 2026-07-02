@@ -171,6 +171,7 @@ public class TransformCorrelatedGroupedAggregationWithoutProjection
                 inputWithUniqueId.getOutputSymbols(),
                 source.getOutputSymbols(),
                 false,
+                false,
                 decorrelatedSource.get().getCorrelatedPredicates(),
                 Optional.empty(),
                 Optional.empty(),

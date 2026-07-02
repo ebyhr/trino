@@ -166,6 +166,7 @@ public class PushDownDereferenceThroughJoin
                 newLeftOutputSymbols,
                 newRightOutputSymbols,
                 joinNode.isMaySkipOutputDuplicates(),
+                joinNode.isEnforceUniqueMatch(),
                 // Use newly created symbols in filter
                 joinNode.getFilter().map(expression -> replaceExpression(expression, mappings)),
                 joinNode.getDistributionType(),

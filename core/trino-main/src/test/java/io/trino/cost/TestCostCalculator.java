@@ -807,6 +807,7 @@ public class TestCostCalculator
                 left.getOutputSymbols(),
                 right.getOutputSymbols(),
                 false,
+                false,
                 Optional.empty(),
                 Optional.of(distributionType),
                 Optional.empty(),

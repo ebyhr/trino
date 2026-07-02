@@ -132,6 +132,19 @@ public class OptimizeDuplicateInsensitiveJoins
         @Override
         public Optional<PlanNode> visitJoin(JoinNode node, Void context)
         {
+            // enforceUniqueMatch requires detecting multiple matches per probe row, which is incompatible
+            // with maySkipOutputDuplicates (which stops after the first match).
+            if (node.isEnforceUniqueMatch()) {
+                Optional<PlanNode> rewrittenLeft = node.getLeft().accept(this, null);
+                Optional<PlanNode> rewrittenRight = node.getRight().accept(this, null);
+                if (rewrittenLeft.isEmpty() && rewrittenRight.isEmpty()) {
+                    return Optional.empty();
+                }
+                return Optional.of(node.replaceChildren(ImmutableList.of(
+                        rewrittenLeft.orElse(node.getLeft()),
+                        rewrittenRight.orElse(node.getRight()))));
+            }
+
             // LookupJoinOperator will evaluate non-deterministic condition on output rows until one of the
             // rows matches. Therefore it's safe to set maySkipOutputDuplicates for joins with non-deterministic
             // filters.

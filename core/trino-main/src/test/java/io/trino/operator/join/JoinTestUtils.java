@@ -93,7 +93,7 @@ public final class JoinTestUtils
             boolean outputSingleMatch)
     {
         return spillingJoin(
-                innerJoin(outputSingleMatch, false),
+                innerJoin(outputSingleMatch, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,

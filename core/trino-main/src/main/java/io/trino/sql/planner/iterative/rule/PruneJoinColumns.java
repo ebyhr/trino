@@ -47,6 +47,7 @@ public class PruneJoinColumns
                         filteredCopy(joinNode.getLeftOutputSymbols(), referencedOutputs::contains),
                         filteredCopy(joinNode.getRightOutputSymbols(), referencedOutputs::contains),
                         joinNode.isMaySkipOutputDuplicates(),
+                        joinNode.isEnforceUniqueMatch(),
                         joinNode.getFilter(),
                         joinNode.getDistributionType(),
                         joinNode.isSpillable(),

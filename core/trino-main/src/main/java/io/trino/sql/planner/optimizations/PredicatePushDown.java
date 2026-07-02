@@ -432,17 +432,35 @@ public class PredicatePushDown
 
             switch (node.getType()) {
                 case INNER -> {
-                    InnerJoinPushDownResult innerJoinPushDownResult = processInnerJoin(
-                            inheritedPredicate,
-                            leftEffectivePredicate,
-                            rightEffectivePredicate,
-                            joinPredicate,
-                            node.getLeft().getOutputSymbols(),
-                            node.getRight().getOutputSymbols());
-                    leftPredicate = innerJoinPushDownResult.getLeftPredicate();
-                    rightPredicate = innerJoinPushDownResult.getRightPredicate();
-                    postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
-                    newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+                    if (node.isEnforceUniqueMatch()) {
+                        // For JOIN TO ONE, do not push the join predicate to either side — it must remain
+                        // as a join filter so the executor can detect multiple matches per probe row.
+                        // Only push the inherited (post-join) predicate.
+                        InnerJoinPushDownResult inheritedPushDownResult = processInnerJoin(
+                                inheritedPredicate,
+                                leftEffectivePredicate,
+                                rightEffectivePredicate,
+                                TRUE,
+                                node.getLeft().getOutputSymbols(),
+                                node.getRight().getOutputSymbols());
+                        leftPredicate = inheritedPushDownResult.getLeftPredicate();
+                        rightPredicate = inheritedPushDownResult.getRightPredicate();
+                        postJoinPredicate = inheritedPushDownResult.getPostJoinPredicate();
+                        newJoinPredicate = joinPredicate;
+                    }
+                    else {
+                        InnerJoinPushDownResult innerJoinPushDownResult = processInnerJoin(
+                                inheritedPredicate,
+                                leftEffectivePredicate,
+                                rightEffectivePredicate,
+                                joinPredicate,
+                                node.getLeft().getOutputSymbols(),
+                                node.getRight().getOutputSymbols());
+                        leftPredicate = innerJoinPushDownResult.getLeftPredicate();
+                        rightPredicate = innerJoinPushDownResult.getRightPredicate();
+                        postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
+                        newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+                    }
                 }
                 case LEFT -> {
                     OuterJoinPushDownResult leftOuterJoinPushDownResult = processLimitedOuterJoin(
@@ -542,7 +560,7 @@ public class PredicatePushDown
                 newJoinFilter = Optional.empty();
             }
 
-            if (node.getType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
+            if (node.getType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty() && !node.isEnforceUniqueMatch()) {
                 // if we do not have any equi conjunct we do not pushdown non-equality condition into
                 // inner join, so we plan execution as nested-loops-join followed by filter instead
                 // hash join.
@@ -573,6 +591,7 @@ public class PredicatePushDown
                         leftSource.getOutputSymbols(),
                         rightSource.getOutputSymbols(),
                         node.isMaySkipOutputDuplicates(),
+                        node.isEnforceUniqueMatch(),
                         newJoinFilter,
                         node.getDistributionType(),
                         node.isSpillable(),
@@ -1142,6 +1161,7 @@ public class PredicatePushDown
                             node.getLeftOutputSymbols(),
                             node.getRightOutputSymbols(),
                             node.isMaySkipOutputDuplicates(),
+                            node.isEnforceUniqueMatch(),
                             node.getFilter(),
                             node.getDistributionType(),
                             node.isSpillable(),
@@ -1157,6 +1177,7 @@ public class PredicatePushDown
                         node.getLeftOutputSymbols(),
                         node.getRightOutputSymbols(),
                         node.isMaySkipOutputDuplicates(),
+                        node.isEnforceUniqueMatch(),
                         node.getFilter(),
                         node.getDistributionType(),
                         node.isSpillable(),
@@ -1177,6 +1198,7 @@ public class PredicatePushDown
                     node.getLeftOutputSymbols(),
                     node.getRightOutputSymbols(),
                     node.isMaySkipOutputDuplicates(),
+                    node.isEnforceUniqueMatch(),
                     node.getFilter(),
                     node.getDistributionType(),
                     node.isSpillable(),

@@ -1062,6 +1062,7 @@ public class AddExchanges
                     node.getLeftOutputSymbols(),
                     node.getRightOutputSymbols(),
                     node.isMaySkipOutputDuplicates(),
+                    node.isEnforceUniqueMatch(),
                     node.getFilter(),
                     Optional.of(newDistributionType),
                     node.isSpillable(),

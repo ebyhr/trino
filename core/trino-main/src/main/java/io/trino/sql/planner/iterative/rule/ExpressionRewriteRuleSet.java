@@ -257,6 +257,7 @@ public class ExpressionRewriteRuleSet
                         joinNode.getLeftOutputSymbols(),
                         joinNode.getRightOutputSymbols(),
                         joinNode.isMaySkipOutputDuplicates(),
+                        joinNode.isEnforceUniqueMatch(),
                         filter,
                         joinNode.getDistributionType(),
                         joinNode.isSpillable(),

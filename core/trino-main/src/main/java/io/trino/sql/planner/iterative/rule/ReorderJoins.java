@@ -114,6 +114,7 @@ public class ReorderJoins
         this.pattern = join().matching(
                 joinNode -> joinNode.getDistributionType().isEmpty()
                         && joinNode.getType() == INNER
+                        && !joinNode.isEnforceUniqueMatch()
                         && isDeterministic(joinNode.getFilter().orElse(TRUE)));
     }
 
@@ -378,6 +379,7 @@ public class ReorderJoins
                     joinConditions,
                     leftOutputSymbols,
                     rightOutputSymbols,
+                    false,
                     false,
                     joinFilters.isEmpty() ? Optional.empty() : Optional.of(and(joinFilters)),
                     Optional.empty(),

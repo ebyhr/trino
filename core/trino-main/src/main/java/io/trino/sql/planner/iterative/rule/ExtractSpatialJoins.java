@@ -326,6 +326,7 @@ public class ExtractSpatialJoins
                 joinNode.getLeftOutputSymbols(),
                 joinNode.getRightOutputSymbols(),
                 joinNode.isMaySkipOutputDuplicates(),
+                joinNode.isEnforceUniqueMatch(),
                 Optional.of(newFilter),
                 joinNode.getDistributionType(),
                 joinNode.isSpillable(),

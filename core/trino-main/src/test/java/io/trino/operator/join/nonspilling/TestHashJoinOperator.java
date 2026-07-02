@@ -254,7 +254,7 @@ public class TestHashJoinOperator
         RowPagesBuilder probePages = rowPagesBuilder(ImmutableList.of(BIGINT));
         Page probeInput = probePages.addSequencePage(100, 0).buildPage();
         OperatorFactory joinOperatorFactory = join(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactory,
@@ -942,7 +942,7 @@ public class TestHashJoinOperator
         List<Type> probeTypes = ImmutableList.of(BIGINT);
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         OperatorFactory joinOperatorFactory = join(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1034,7 +1034,7 @@ public class TestHashJoinOperator
                 .row(3L)
                 .build();
         OperatorFactory joinOperatorFactory = join(
-                probeOuterJoin(false),
+                probeOuterJoin(false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1137,7 +1137,7 @@ public class TestHashJoinOperator
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         List<Page> probeInput = probePages.build();
         OperatorFactory joinOperatorFactory = join(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1259,7 +1259,7 @@ public class TestHashJoinOperator
         List<Type> probeTypes = ImmutableList.of(VARCHAR);
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         OperatorFactory joinOperatorFactory = join(
-                innerJoin(false, waitForBuild),
+                innerJoin(false, false, waitForBuild),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1285,7 +1285,7 @@ public class TestHashJoinOperator
             boolean hasFilter)
     {
         return join(
-                probeOuterJoin(false),
+                probeOuterJoin(false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,

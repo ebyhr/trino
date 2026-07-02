@@ -117,6 +117,7 @@ public final class PushProjectionThroughJoin
                 leftOutputSymbols,
                 rightOutputSymbols,
                 joinNode.isMaySkipOutputDuplicates(),
+                joinNode.isEnforceUniqueMatch(),
                 joinNode.getFilter(),
                 joinNode.getDistributionType(),
                 joinNode.isSpillable(),

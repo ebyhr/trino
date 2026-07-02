@@ -2485,7 +2485,7 @@ public class LocalExecutionPlanner
             // We use spilling operator since Non-spilling one does not support index lookup sources
             lookupJoinOperatorFactory = switch (node.getType()) {
                 case INNER -> spillingJoin(
-                        JoinOperatorType.innerJoin(false, false),
+                        JoinOperatorType.innerJoin(false, false, false),
                         context.getNextOperatorId(),
                         node.getId(),
                         lookupSourceFactoryManager,
@@ -2496,7 +2496,7 @@ public class LocalExecutionPlanner
                         unsupportedPartitioningSpillerFactory(),
                         hashCompiler);
                 case SOURCE_OUTER -> spillingJoin(
-                        JoinOperatorType.probeOuterJoin(false),
+                        JoinOperatorType.probeOuterJoin(false, false),
                         context.getNextOperatorId(),
                         node.getId(),
                         lookupSourceFactoryManager,
@@ -2984,7 +2984,7 @@ public class LocalExecutionPlanner
                         new PhysicalOperation(hashBuilderOperatorFactory, ImmutableMap.of(), buildSource),
                         buildContext);
 
-                JoinOperatorType joinType = JoinOperatorType.ofJoinNodeType(node.getType(), outputSingleMatch, waitForBuild);
+                JoinOperatorType joinType = JoinOperatorType.ofJoinNodeType(node.getType(), outputSingleMatch, node.isEnforceUniqueMatch(), waitForBuild);
                 operator = spillingJoin(
                         joinType,
                         context.getNextOperatorId(),
@@ -3033,7 +3033,7 @@ public class LocalExecutionPlanner
                         new PhysicalOperation(hashBuilderOperatorFactory, ImmutableMap.of(), buildSource),
                         buildContext);
 
-                JoinOperatorType joinType = JoinOperatorType.ofJoinNodeType(node.getType(), outputSingleMatch, waitForBuild);
+                JoinOperatorType joinType = JoinOperatorType.ofJoinNodeType(node.getType(), outputSingleMatch, node.isEnforceUniqueMatch(), waitForBuild);
                 operator = join(
                         joinType,
                         context.getNextOperatorId(),

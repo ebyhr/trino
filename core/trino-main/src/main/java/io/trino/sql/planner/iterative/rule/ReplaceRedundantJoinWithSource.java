@@ -57,6 +57,10 @@ public class ReplaceRedundantJoinWithSource
     @Override
     public Result apply(JoinNode node, Captures captures, Context context)
     {
+        if (node.isEnforceUniqueMatch()) {
+            return Result.empty();
+        }
+
         Cardinality leftCardinality = extractCardinality(node.getLeft(), context.getLookup());
         if (leftCardinality.isEmpty()) {
             return Result.empty();

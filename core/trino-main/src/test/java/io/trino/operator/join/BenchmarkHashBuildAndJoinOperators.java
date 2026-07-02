@@ -212,7 +212,7 @@ public class BenchmarkHashBuildAndJoinOperators
 
             JoinBridgeManager<PartitionedLookupSourceFactory> lookupSourceFactory = getLookupSourceFactoryManager(this, outputChannels, partitionCount);
             joinOperatorFactory = spillingJoin(
-                    innerJoin(false, false),
+                    innerJoin(false, false, false),
                     HASH_JOIN_OPERATOR_ID,
                     TEST_PLAN_NODE_ID,
                     lookupSourceFactory,

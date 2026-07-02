@@ -247,7 +247,7 @@ public class TestHashJoinOperator
         RowPagesBuilder probePages = rowPagesBuilder(ImmutableList.of(BIGINT));
         Page probeInput = probePages.addSequencePage(100, 0).buildPage();
         OperatorFactory joinOperatorFactory = spillingJoin(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactory,
@@ -1426,7 +1426,7 @@ public class TestHashJoinOperator
         List<Type> probeTypes = ImmutableList.of(VARCHAR);
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         OperatorFactory joinOperatorFactory = spillingJoin(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1518,7 +1518,7 @@ public class TestHashJoinOperator
                 .row("c")
                 .build();
         OperatorFactory joinOperatorFactory = spillingJoin(
-                probeOuterJoin(false),
+                probeOuterJoin(false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1621,7 +1621,7 @@ public class TestHashJoinOperator
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         List<Page> probeInput = probePages.build();
         OperatorFactory joinOperatorFactory = spillingJoin(
-                innerJoin(false, false),
+                innerJoin(false, false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1745,7 +1745,7 @@ public class TestHashJoinOperator
         List<Type> probeTypes = ImmutableList.of(VARCHAR);
         RowPagesBuilder probePages = rowPagesBuilder(probeTypes);
         OperatorFactory joinOperatorFactory = spillingJoin(
-                innerJoin(false, waitForBuild),
+                innerJoin(false, false, waitForBuild),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,
@@ -1772,7 +1772,7 @@ public class TestHashJoinOperator
             RowPagesBuilder probePages)
     {
         return spillingJoin(
-                probeOuterJoin(false),
+                probeOuterJoin(false, false),
                 0,
                 new PlanNodeId("test"),
                 lookupSourceFactoryManager,

@@ -84,6 +84,7 @@ class TestIncrementalRefreshVisitor
                 left.getOutputSymbols(),
                 right.getOutputSymbols(),
                 false,
+                false,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

@@ -138,6 +138,7 @@ public class TransformFilteringSemiJoinToInnerJoin
                 semiJoin.getSource().getOutputSymbols(),
                 ImmutableList.of(),
                 false,
+                false,
                 joinFilter,
                 Optional.empty(),
                 Optional.empty(),

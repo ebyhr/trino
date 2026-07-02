@@ -27,6 +27,7 @@ import io.trino.operator.join.spilling.JoinProbe;
 import io.trino.operator.join.spilling.JoinProbe.JoinProbeFactory;
 import io.trino.operator.join.spilling.LookupJoinPageBuilder;
 import io.trino.spi.Page;
+import io.trino.spi.TrinoException;
 import io.trino.spi.type.Type;
 import io.trino.spiller.PartitioningSpiller;
 import io.trino.spiller.PartitioningSpillerFactory;
@@ -58,6 +59,7 @@ import static io.trino.operator.WorkProcessor.TransformationState.yielded;
 import static io.trino.operator.join.JoinType.FULL_OUTER;
 import static io.trino.operator.join.JoinType.PROBE_OUTER;
 import static io.trino.operator.join.spilling.PartitionedLookupSourceFactory.NO_SPILL_EPOCH;
+import static io.trino.spi.StandardErrorCode.SUBQUERY_MULTIPLE_ROWS;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -78,6 +80,7 @@ public class DefaultPageJoiner
     private final Map<Integer, SavedRow> spilledRows = new HashMap<>();
     private final boolean probeOnOuterSide;
     private final boolean outputSingleMatch;
+    private final boolean enforceUniqueMatch;
     private final SpillMetrics spillMetrics;
 
     @Nullable
@@ -98,6 +101,7 @@ public class DefaultPageJoiner
             List<Type> buildOutputTypes,
             JoinType joinType,
             boolean outputSingleMatch,
+            boolean enforceUniqueMatch,
             SpillMetrics spillMetrics,
             HashGenerator hashGenerator,
             JoinProbeFactory joinProbeFactory,
@@ -119,6 +123,7 @@ public class DefaultPageJoiner
         this.partitionGenerator = memoize(() -> new LocalPartitionGenerator(hashGenerator, lookupSourceFactory.partitions()));
         this.pageBuilder = new LookupJoinPageBuilder(buildOutputTypes);
         this.outputSingleMatch = outputSingleMatch;
+        this.enforceUniqueMatch = enforceUniqueMatch;
         this.spillMetrics = requireNonNull(spillMetrics, "spillMetrics is null");
 
         // Cannot use switch case here, because javac will synthesize an inner class and cause IllegalAccessError
@@ -279,6 +284,10 @@ public class DefaultPageJoiner
             else {
                 // get next position on lookup side for this probe row
                 joinPosition = lookupSource.getNextJoinPosition(joinPosition, probe.getPosition(), probe.getPage());
+                if (enforceUniqueMatch && currentProbePositionProducedRow && joinPosition >= 0 &&
+                        lookupSource.isJoinPositionEligible(joinPosition, probe.getPosition(), probe.getPage())) {
+                    throw new TrinoException(SUBQUERY_MULTIPLE_ROWS, "JOIN TO ONE matched more than one row from the right side");
+                }
             }
 
             if (yieldSignal.isSet() || pageBuilder.isFull()) {

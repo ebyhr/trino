@@ -2005,6 +2005,9 @@ class AstBuilder
         else if (context.joinType().FULL() != null) {
             joinType = Join.Type.FULL;
         }
+        else if (context.joinToOne() != null) {
+            joinType = Join.Type.JOIN_TO_ONE;
+        }
         else {
             joinType = Join.Type.INNER;
         }

@@ -1076,6 +1076,7 @@ public class PlanBuilder
                 leftOutputSymbols,
                 rightOutputSymbols,
                 false,
+                false,
                 filter,
                 distributionType,
                 Optional.empty(),

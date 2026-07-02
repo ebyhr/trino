@@ -195,6 +195,7 @@ public class MultipleDistinctAggregationsToSubqueries
                 left.getOutputSymbols(),
                 right.getOutputSymbols(),
                 false, // since we only work on global aggregation or grouped rows, there are no duplicates, so we don't have to skip it
+                false,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

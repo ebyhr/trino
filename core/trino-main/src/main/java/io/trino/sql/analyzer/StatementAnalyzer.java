@@ -3540,7 +3540,7 @@ class StatementAnalyzer
 
                 // Need to register coercions in case when join criteria requires coercion (e.g. join on char(1) = char(2))
                 // Correlations are only currently support in the join criteria for INNER joins
-                ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, output, node.getType() == INNER ? CorrelationSupport.ALLOWED : CorrelationSupport.DISALLOWED);
+                ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, output, node.getType() == INNER || node.getType() == Join.Type.JOIN_TO_ONE ? CorrelationSupport.ALLOWED : CorrelationSupport.DISALLOWED);
                 Type clauseType = expressionAnalysis.getType(expression);
                 if (!clauseType.equals(BOOLEAN)) {
                     if (!clauseType.equals(UNKNOWN)) {

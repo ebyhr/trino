@@ -47,6 +47,7 @@ public class LookupJoinOperatorFactory
     private final List<Type> buildOutputTypes;
     private final JoinType joinType;
     private final boolean outputSingleMatch;
+    private final boolean enforceUniqueMatch;
     private final boolean waitForBuild;
     private final JoinProbeFactory joinProbeFactory;
     private final Optional<OperatorFactory> outerOperatorFactory;
@@ -70,6 +71,7 @@ public class LookupJoinOperatorFactory
         this.buildOutputTypes = ImmutableList.copyOf(requireNonNull(buildOutputTypes, "buildOutputTypes is null"));
         this.joinType = requireNonNull(joinOperatorType.getType(), "joinType is null");
         this.outputSingleMatch = joinOperatorType.isOutputSingleMatch();
+        this.enforceUniqueMatch = joinOperatorType.isEnforceUniqueMatch();
         this.waitForBuild = joinOperatorType.isWaitForBuild();
         this.joinProbeFactory = requireNonNull(joinProbeFactory, "joinProbeFactory is null");
 
@@ -100,6 +102,7 @@ public class LookupJoinOperatorFactory
         buildOutputTypes = other.buildOutputTypes;
         joinType = other.joinType;
         outputSingleMatch = other.outputSingleMatch;
+        enforceUniqueMatch = other.enforceUniqueMatch;
         waitForBuild = other.waitForBuild;
         joinProbeFactory = other.joinProbeFactory;
         outerOperatorFactory = other.outerOperatorFactory;
@@ -144,6 +147,7 @@ public class LookupJoinOperatorFactory
                 buildOutputTypes,
                 joinType,
                 outputSingleMatch,
+                enforceUniqueMatch,
                 waitForBuild,
                 lookupSourceFactory,
                 joinProbeFactory,
